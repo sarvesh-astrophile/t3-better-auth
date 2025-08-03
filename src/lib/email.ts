@@ -7,9 +7,10 @@ const developmentEmails: Array<{
   subject: string;
   html: string;
   text: string;
-  url: string;
-  token: string;
-  type: 'verification' | 'reset';
+  otp?: string;
+  url?: string;
+  token?: string;
+  type: 'email-verification' | 'sign-in' | 'forget-password' | 'reset';
   timestamp: Date;
 }> = [];
 
@@ -43,12 +44,19 @@ export const createEmailTransporter = () => {
 // Development email display functions
 const logEmailToConsole = (email: typeof developmentEmails[0]) => {
   console.log("\n" + "=".repeat(80));
-  console.log("📧 EMAIL VERIFICATION (DEVELOPMENT MODE)");
+  console.log(`📧 EMAIL ${email.type.toUpperCase()} (DEVELOPMENT MODE)`);
   console.log("=".repeat(80));
   console.log(`📬 To: ${email.to}`);
   console.log(`📌 Subject: ${email.subject}`);
-  console.log(`🔗 Verification URL: ${email.url}`);
-  console.log(`🔑 Token: ${email.token}`);
+  if (email.otp) {
+    console.log(`🔐 OTP: ${email.otp}`);
+  }
+  if (email.url) {
+    console.log(`🔗 URL: ${email.url}`);
+  }
+  if (email.token) {
+    console.log(`🔑 Token: ${email.token}`);
+  }
   console.log(`⏰ Sent: ${email.timestamp.toLocaleString()}`);
   console.log("=".repeat(80));
   console.log("📖 Email Content (Text):");
@@ -64,7 +72,83 @@ export const clearDevelopmentEmails = () => {
   developmentEmails.length = 0;
 };
 
-// Send email verification
+// Send OTP email
+export const sendOTPEmail = async ({
+  to,
+  otp,
+  type,
+}: {
+  to: string;
+  otp: string;
+  type: 'email-verification' | 'sign-in' | 'forget-password';
+}) => {
+  const host = env.BETTER_AUTH_URL ? new URL(env.BETTER_AUTH_URL).host : 'localhost:3000';
+  
+  const emailData = {
+    to,
+    subject: getOTPSubject(type, host),
+    html: getOTPEmailHtml({ otp, type, host }),
+    text: getOTPEmailText({ otp, type, host }),
+    otp,
+    type,
+    timestamp: new Date(),
+  };
+
+  // In development, log to console and store for API access
+  if (isDevelopment) {
+    developmentEmails.unshift(emailData); // Add to beginning of array
+    
+    // Keep only last 20 emails
+    if (developmentEmails.length > 20) {
+      developmentEmails.length = 20;
+    }
+    
+    logEmailToConsole(emailData);
+    
+    // Return mock success response
+    return {
+      messageId: `dev-${Date.now()}`,
+      accepted: [to],
+      rejected: [],
+      pending: [],
+    };
+  }
+
+  // Production: send real email
+  const transporter = createEmailTransporter();
+  
+  try {
+    const result = await transporter.sendMail({
+      from: env.EMAIL_FROM,
+      to,
+      subject: emailData.subject,
+      html: emailData.html,
+      text: emailData.text,
+    });
+
+    const failed = result.rejected.concat(result.pending).filter(Boolean);
+    if (failed.length) {
+      throw new Error(`Email(s) (${failed.join(", ")}) could not be sent`);
+    }
+    
+    return result;
+  } catch (error: any) {
+    console.error("OTP email sending error:", error);
+    
+    // Provide more helpful error messages for common issues
+    if (error.code === 'EENVELOPE' && error.response?.includes('domain is not associated')) {
+      throw new Error("The email domain is not verified with your Plunk account. Please verify your domain in the Plunk dashboard or use a verified email address.");
+    }
+    
+    if (error.code === 'EAUTH') {
+      throw new Error("SMTP authentication failed. Please check your Plunk API key in the SMTP_PASSWORD environment variable.");
+    }
+    
+    throw error;
+  }
+};
+
+// Send email verification (deprecated - keeping for compatibility)
 export const sendVerificationEmail = async ({
   to,
   url,
@@ -84,7 +168,7 @@ export const sendVerificationEmail = async ({
     text: getVerificationEmailText({ url, host }),
     url,
     token,
-    type: 'verification' as const,
+    type: 'email-verification' as const,
     timestamp: new Date(),
   };
 
@@ -322,4 +406,110 @@ const getPasswordResetEmailHtml = ({ url, host }: { url: string; host: string })
 // Password reset text template (fallback)
 const getPasswordResetEmailText = ({ url, host }: { url: string; host: string }) => {
   return `Reset your password for ${host}\n\nClick this link to reset your password:\n${url}\n\nIf you did not request this email you can safely ignore it. This link will expire in 24 hours.`;
+};
+
+// OTP email helper functions
+const getOTPSubject = (type: 'email-verification' | 'sign-in' | 'forget-password', host: string) => {
+  switch (type) {
+    case 'email-verification':
+      return `Verify your email address for ${host}`;
+    case 'sign-in':
+      return `Your sign-in code for ${host}`;
+    case 'forget-password':
+      return `Reset your password for ${host}`;
+    default:
+      return `Your verification code for ${host}`;
+  }
+};
+
+// OTP email HTML template
+const getOTPEmailHtml = ({ otp, type, host }: { otp: string; type: string; host: string }) => {
+  const brandColor = type === 'forget-password' ? "#dc2626" : "#346df1";
+  const color = {
+    background: "#f9f9f9",
+    text: "#444",
+    mainBackground: "#fff",
+    buttonBackground: brandColor,
+    buttonBorder: brandColor,
+    buttonText: "#fff",
+  };
+
+  const getTitle = () => {
+    switch (type) {
+      case 'email-verification':
+        return `Verify your email for <strong>${host}</strong>`;
+      case 'sign-in':
+        return `Sign in to <strong>${host}</strong>`;
+      case 'forget-password':
+        return `Reset your password for <strong>${host}</strong>`;
+      default:
+        return `Your verification code for <strong>${host}</strong>`;
+    }
+  };
+
+  const getInstructions = () => {
+    switch (type) {
+      case 'email-verification':
+        return 'Enter this code to verify your email address:';
+      case 'sign-in':
+        return 'Enter this code to sign in to your account:';
+      case 'forget-password':
+        return 'Enter this code to reset your password:';
+      default:
+        return 'Enter this verification code:';
+    }
+  };
+
+  return `
+<body style="background: ${color.background};">
+  <table width="100%" border="0" cellspacing="20" cellpadding="0"
+    style="background: ${color.mainBackground}; max-width: 600px; margin: auto; border-radius: 10px;">
+    <tr>
+      <td align="center"
+        style="padding: 10px 0px; font-size: 22px; font-family: Helvetica, Arial, sans-serif; color: ${color.text};">
+        ${getTitle()}
+      </td>
+    </tr>
+    <tr>
+      <td align="center"
+        style="padding: 10px 0px; font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: ${color.text};">
+        ${getInstructions()}
+      </td>
+    </tr>
+    <tr>
+      <td align="center" style="padding: 20px 0;">
+        <div style="background: ${color.buttonBackground}; border-radius: 8px; padding: 15px 30px; display: inline-block;">
+          <span style="font-size: 32px; font-family: 'Courier New', monospace; color: ${color.buttonText}; font-weight: bold; letter-spacing: 8px;">
+            ${otp}
+          </span>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td align="center"
+        style="padding: 0px 0px 10px 0px; font-size: 16px; line-height: 22px; font-family: Helvetica, Arial, sans-serif; color: ${color.text};">
+        This code will expire in 5 minutes. If you did not request this code, you can safely ignore this email.
+      </td>
+    </tr>
+  </table>
+</body>
+`;
+};
+
+// OTP email text template (fallback)
+const getOTPEmailText = ({ otp, type, host }: { otp: string; type: string; host: string }) => {
+  const getInstructions = () => {
+    switch (type) {
+      case 'email-verification':
+        return `Verify your email for ${host}`;
+      case 'sign-in':
+        return `Sign in to ${host}`;
+      case 'forget-password':
+        return `Reset your password for ${host}`;
+      default:
+        return `Your verification code for ${host}`;
+    }
+  };
+
+  return `${getInstructions()}\n\nYour verification code is: ${otp}\n\nThis code will expire in 5 minutes. If you did not request this code, you can safely ignore this email.`;
 };

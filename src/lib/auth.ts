@@ -1,8 +1,9 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { emailOTP } from "better-auth/plugins";
 import { PrismaClient } from "@prisma/client";
 import { env } from "@/env";
-import { sendVerificationEmail, sendPasswordResetEmail } from "@/lib/email";
+import { sendOTPEmail, sendPasswordResetEmail } from "@/lib/email";
 
 const prisma = new PrismaClient();
 
@@ -21,17 +22,21 @@ export const auth = betterAuth({
       });
     },
   },
-  emailVerification: {
-    sendOnSignUp: true,
-    autoSignInAfterVerification: true,
-    sendVerificationEmail: async ({ user, url, token }, request) => {
-      await sendVerificationEmail({
-        to: user.email,
-        url,
-        token,
-      });
-    },
-  },
+  plugins: [
+    emailOTP({
+      overrideDefaultEmailVerification: true, // Replace link-based verification with OTP
+      otpLength: 6, // 6-digit OTP
+      expiresIn: 300, // 5 minutes expiry
+      allowedAttempts: 3, // Allow 3 verification attempts
+      async sendVerificationOTP({ email, otp, type }) {
+        await sendOTPEmail({
+          to: email,
+          otp,
+          type,
+        });
+      },
+    }),
+  ],
   socialProviders: {
     google: {
       clientId: env.GOOGLE_CLIENT_ID!,

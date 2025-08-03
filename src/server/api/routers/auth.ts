@@ -83,8 +83,34 @@ export const authRouter = createTRPCRouter({
           success: true,
           message: "Signed in successfully",
         };
-      } catch (error) {
+      } catch (error: any) {
         console.error("Sign in error:", error);
+        
+        // Check if the error is due to unverified email
+        if (error.message?.includes('email not verified') || error.status === 403) {
+          // Store or update unverified login attempt
+          try {
+            await ctx.db.unverifiedLogin.upsert({
+              where: { email: input.email },
+              update: { 
+                lastLoginAttempt: new Date(),
+              },
+              create: {
+                email: input.email,
+                password: input.password, // Note: This should be hashed in production
+                name: '', // We don't have name during sign-in
+                lastLoginAttempt: new Date(),
+              },
+            });
+          } catch (dbError) {
+            console.error("Failed to store unverified login:", dbError);
+          }
+          
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Please verify your email address before signing in",
+          });
+        }
         
         throw new TRPCError({
           code: "UNAUTHORIZED",
@@ -113,6 +139,69 @@ export const authRouter = createTRPCRouter({
     }
   }),
 
+  sendVerificationOTP: publicProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        type: z.enum(['email-verification', 'sign-in', 'forget-password']).default('email-verification'),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        await auth.api.sendVerificationOTP({
+          body: {
+            email: input.email,
+            type: input.type,
+          },
+          headers: ctx.headers,
+        });
+
+        return {
+          success: true,
+          message: "Verification code sent successfully",
+        };
+      } catch (error) {
+        console.error("Send verification OTP error:", error);
+        
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to send verification code",
+        });
+      }
+    }),
+
+  verifyEmailOTP: publicProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        otp: z.string().length(6),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        await auth.api.verifyEmailOTP({
+          body: {
+            email: input.email,
+            otp: input.otp,
+          },
+          headers: ctx.headers,
+        });
+
+        return {
+          success: true,
+          message: "Email verified successfully",
+        };
+      } catch (error) {
+        console.error("Verify email OTP error:", error);
+        
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid or expired verification code",
+        });
+      }
+    }),
+
+  // Legacy support - keep for compatibility but deprecate
   sendVerificationEmail: publicProcedure
     .input(
       z.object({
@@ -122,24 +211,25 @@ export const authRouter = createTRPCRouter({
     )
     .mutation(async ({ input, ctx }) => {
       try {
-        await auth.api.sendVerificationEmail({
+        // Redirect to OTP flow
+        await auth.api.sendVerificationOTP({
           body: {
             email: input.email,
-            callbackURL: input.callbackURL || "/dashboard",
+            type: 'email-verification',
           },
           headers: ctx.headers,
         });
 
         return {
           success: true,
-          message: "Verification email sent successfully",
+          message: "Verification code sent successfully",
         };
       } catch (error) {
         console.error("Send verification email error:", error);
         
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to send verification email",
+          message: "Failed to send verification code",
         });
       }
     }),

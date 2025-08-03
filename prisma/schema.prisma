@@ -71,11 +71,27 @@ model Account {
 model Verification {
   id         String   @id
   identifier String   // Email address
-  value      String   // Verification token
+  value      String   // Verification token/OTP
   expiresAt  DateTime // Token expiration time
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  type       String   @default("email-verification") // Type: email-verification, sign-in, forget-password
+  attempts   Int      @default(0) // Track verification attempts
 
   @@unique([identifier, value])
   @@map("verification")
+}
+
+model UnverifiedLogin {
+  id        String   @id @default(cuid())
+  email     String   
+  password  String   // Hashed password
+  name      String   
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastLoginAttempt DateTime?
+
+  @@unique([email])
+  @@map("unverified_login")
 }

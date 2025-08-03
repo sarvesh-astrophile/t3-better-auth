@@ -32,13 +32,15 @@ export function VerificationPendingForm({
   const emailFromParams = searchParams.get("email");
   const userEmail = emailFromParams || email;
 
-  const resendVerificationMutation = api.auth.sendVerificationEmail.useMutation({
+  const resendVerificationMutation = api.auth.sendVerificationOTP.useMutation({
     onSuccess: () => {
       setIsResent(true);
       toast({
-        title: "Email Sent",
-        description: "Verification email sent successfully! Check your inbox.",
+        title: "Code Sent",
+        description: "Verification code sent successfully! Check your inbox.",
       });
+      // Redirect to OTP verification page
+      router.push(`/auth/verify-otp?email=${encodeURIComponent(userEmail)}`);
     },
     onError: (error) => {
       toast({
@@ -62,7 +64,7 @@ export function VerificationPendingForm({
 
     resendVerificationMutation.mutate({
       email: userEmail,
-      callbackURL: "/dashboard",
+      type: 'email-verification',
     });
   };
 
@@ -72,7 +74,7 @@ export function VerificationPendingForm({
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Verify Your Email</CardTitle>
           <CardDescription>
-            Please check your email and click the verification link to continue
+            We'll send you a 6-digit verification code to continue
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -81,11 +83,12 @@ export function VerificationPendingForm({
               <Mail className="size-6 text-blue-600" />
             </div>
             <div className="text-center">
-              <p className="font-medium">Check Your Email</p>
+              <p className="font-medium">Email Verification Required</p>
               <p className="text-sm text-muted-foreground">
-                We've sent a verification link to{" "}
-                {userEmail && (
-                  <span className="font-medium text-foreground">{userEmail}</span>
+                {userEmail ? (
+                  <>We'll send a verification code to <span className="font-medium text-foreground">{userEmail}</span></>
+                ) : (
+                  "Enter your email address to receive a verification code"
                 )}
               </p>
             </div>
@@ -102,14 +105,14 @@ export function VerificationPendingForm({
             <Alert className="border-green-200 bg-green-50 text-green-800">
               <CheckCircle2 className="size-4" />
               <AlertDescription>
-                New verification email sent! Please check your inbox and spam folder.
+                Verification code sent! You'll be redirected to enter the code.
               </AlertDescription>
             </Alert>
           )}
 
           <div className="space-y-4">
             <div className="text-center text-sm text-muted-foreground">
-              <p>Didn't receive the email? Check your spam folder or request a new one.</p>
+              <p>Ready to verify your email? Click below to get your verification code.</p>
             </div>
 
             <form onSubmit={handleResendVerification} className="space-y-4">
@@ -140,7 +143,7 @@ export function VerificationPendingForm({
                       Sending...
                     </>
                   ) : (
-                    "Resend Email"
+                    "Send Verification Code"
                   )}
                 </Button>
                 <Button 
@@ -157,11 +160,11 @@ export function VerificationPendingForm({
 
           <div className="space-y-3 text-sm text-muted-foreground">
             <div className="text-center">
-              <p className="font-medium">Having trouble?</p>
+              <p className="font-medium">How it works:</p>
               <ul className="mt-2 space-y-1">
-                <li>• Check your spam or junk folder</li>
-                <li>• Make sure you entered the correct email address</li>
-                <li>• The verification link expires in 24 hours</li>
+                <li>• We'll send a 6-digit code to your email</li>
+                <li>• Enter the code on the verification page</li>
+                <li>• Verification codes expire in 5 minutes</li>
               </ul>
             </div>
           </div>

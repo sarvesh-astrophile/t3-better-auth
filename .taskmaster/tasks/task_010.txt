@@ -1,0 +1,31 @@
+# Task ID: 10
+# Title: Implement Email Verification Enforcement
+# Status: pending
+# Dependencies: 8, 9
+# Priority: high
+# Description: Build email verification enforcement logic and redirection flow
+# Details:
+Implement middleware to check email verification status, redirect unverified users to verification page, handle verification links, and provide options to resend verification emails. Ensure all protected routes enforce email verification.
+
+# Test Strategy:
+Test email verification flow with new user registration and ensure unverified users cannot access protected areas.
+
+# Subtasks:
+## 1. Create Next.js Middleware for Protected Routes [pending]
+### Dependencies: None
+### Description: Initialize a Next.js middleware file to intercept incoming requests targeting protected routes.
+### Details:
+Create middleware.ts at the project root; import NextRequest and NextResponse from 'next/server'; export a default middleware function that receives the request and response objects.
+
+## 2. Implement Email Verification Check in Middleware [pending]
+### Dependencies: 10.1
+### Description: Add logic within the middleware to inspect the user session and verify the emailVerified flag.
+### Details:
+Retrieve the authentication session from cookies or headers using next-auth's getToken or getSession; check session.user.emailVerified; if true, allow the request to proceed.
+
+## 3. Configure Middleware Redirects and Route Exclusions [pending]
+### Dependencies: 10.1, 10.2
+### Description: Configure middleware to redirect unverified users to the verification page and exclude public and auth paths to prevent redirect loops.
+### Details:
+Define arrays for public routes (e.g., '/', '/api/auth/*', '/verification') and protected routes matcher; in middleware, if path is excluded, bypass checks; if emailVerified is false and path is protected, use NextResponse.redirect to send users to '/verification'.
+

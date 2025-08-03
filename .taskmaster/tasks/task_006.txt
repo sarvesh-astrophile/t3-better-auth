@@ -1,0 +1,31 @@
+# Task ID: 6
+# Title: Configure Google OAuth and API Credentials
+# Status: pending
+# Dependencies: 3
+# Priority: medium
+# Description: Set up Google OAuth 2.0 API credentials and configure authentication provider
+# Details:
+Create Google OAuth 2.0 application, configure authorized redirect URIs, obtain client ID and secret, and integrate with better-auth Google provider. Set up environment variables securely.
+
+# Test Strategy:
+Test Google OAuth flow in development environment to ensure proper authentication and user data retrieval.
+
+# Subtasks:
+## 1. Create OAuth 2.0 Client ID in Google Cloud Console [pending]
+### Dependencies: None
+### Description: Create an OAuth 2.0 Client ID for your application in the Google Cloud Console under APIs & Services > Credentials.
+### Details:
+In the Google Cloud Console, select your project, navigate to APIs & Services > Credentials, click Create Credentials > OAuth client ID, choose Web application, provide a name, and create the client.
+
+## 2. Configure OAuth consent screen and authorized redirect URIs [pending]
+### Dependencies: 6.1
+### Description: Set up the OAuth consent screen and add authorized redirect URIs for the OAuth client.
+### Details:
+Open OAuth consent screen in the Console, fill in app information, add required scopes and test users; then edit the created OAuth client and add redirect URIs such as https://yourapp.com/api/auth/callback/google.
+
+## 3. Securely store credentials and configure better-auth provider [pending]
+### Dependencies: 6.2
+### Description: Store the Client ID and Client Secret in environment variables and configure the Google provider in better-auth.
+### Details:
+Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your .env file; update your better-auth configuration to include the Google provider using these environment variables and set the correct callback URL.
+

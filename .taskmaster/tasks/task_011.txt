@@ -1,0 +1,37 @@
+# Task ID: 11
+# Title: Implement 2FA Verification Flow
+# Status: pending
+# Dependencies: 8, 9
+# Priority: medium
+# Description: Build the post-login 2FA verification system including /auth/verify-2fa page
+# Details:
+Create 2FA verification page and logic to handle TOTP codes, WebAuthn prompts, and recovery codes. Implement temporary state management for users pending 2FA verification and proper session establishment after successful verification.
+
+# Test Strategy:
+Test 2FA verification flow with different methods (TOTP, WebAuthn, recovery codes) and verify proper session handling.
+
+# Subtasks:
+## 1. Build 2FA Verification UI [pending]
+### Dependencies: None
+### Description: Create the /auth/verify-2fa page to accept TOTP codes, recovery codes, or trigger WebAuthn prompts
+### Details:
+Design form layout, input fields for TOTP and recovery codes, integrate WebAuthn JavaScript for credential requests, include client-side validation and error feedback
+
+## 2. Implement Backend Verification Logic [pending]
+### Dependencies: 11.1
+### Description: Add server-side endpoint to verify submitted TOTP, recovery codes, and WebAuthn assertions
+### Details:
+Parse and validate credentials against stored user secrets or WebAuthn challenge, handle error cases, update attempt counters, and log verification events
+
+## 3. Manage Intermediate Authentication State [pending]
+### Dependencies: 11.2
+### Description: Implement secure temporary state management for users pending 2FA using a short-lived signed cookie
+### Details:
+Generate and sign a partial-auth cookie after password login, enforce cookie presence on /auth/verify-2fa, set HttpOnly, Secure flags, and configure expiration
+
+## 4. Elevate Session and Redirect [pending]
+### Dependencies: 11.3
+### Description: On successful 2FA verification, upgrade the session to fully authenticated, clear temporary state, and redirect the user
+### Details:
+Remove partial-auth cookie, set full-auth session flag or token, persist session in store, and redirect to the originally requested protected route
+

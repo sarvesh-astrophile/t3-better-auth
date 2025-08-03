@@ -1,0 +1,37 @@
+# Task ID: 12
+# Title: Implement Google One-Tap Login
+# Status: pending
+# Dependencies: 6, 10, 11
+# Priority: low
+# Description: Add Google One-Tap functionality to homepage with verification checks
+# Details:
+Integrate Google One-Tap authentication on the homepage for returning users with active Google sessions. Ensure One-Tap users still go through email verification and 2FA checks as needed.
+
+# Test Strategy:
+Test One-Tap login flow with various user states (verified/unverified email, 2FA enabled/disabled).
+
+# Subtasks:
+## 1. Integrate Google Identity Services library script [pending]
+### Dependencies: None
+### Description: Add the Google One-Tap script to the project HTML or dynamically load it.
+### Details:
+Include the official Google One-Tap script tag from https://accounts.google.com/gsi/client in the application’s main HTML template or load it at runtime. Ensure it uses the correct Google client ID sourced from environment variables and is available before invoking any GIS functions.
+
+## 2. Implement frontend logic to initialize and render the One-Tap prompt [pending]
+### Dependencies: 12.1
+### Description: Initialize and display the Google One-Tap prompt on the homepage.
+### Details:
+In the client code, call google.accounts.id.initialize with the configured client_id, a placeholder callback, and prompt options (e.g., auto_select, cancel_on_tap_outside). Then invoke google.accounts.id.prompt to render the One-Tap UI when appropriate, ensuring it only appears for users with active Google sessions.
+
+## 3. Create frontend callback to send Google ID token to backend [pending]
+### Dependencies: 12.2
+### Description: Handle the One-Tap response and forward the ID token to the server.
+### Details:
+Define the callback function provided to google.accounts.id.initialize to receive the credential response. Extract the JWT credential and send it via a fetch request or tRPC client call to the backend endpoint/procedure (e.g., auth.googleOneTap). Implement UI loading and error states during the request.
+
+## 4. Create backend tRPC procedure to verify token and complete login/signup flow [pending]
+### Dependencies: 12.3
+### Description: Implement server-side verification of the Google ID token and user authentication logic.
+### Details:
+In the backend auth router, create a new tRPC procedure (e.g., googleOneTap). Verify the incoming token using Google’s OAuth2 client library or JWKS. Extract user info (email, name, sub), upsert the user in the database, enforce email verification and 2FA as configured, generate a session, and return session data to the client.
+

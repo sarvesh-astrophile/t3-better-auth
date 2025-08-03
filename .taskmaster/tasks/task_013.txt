@@ -1,0 +1,37 @@
+# Task ID: 13
+# Title: Build 2FA Management Dashboard UI
+# Status: pending
+# Dependencies: 2, 11
+# Priority: medium
+# Description: Create the security dashboard at /dashboard/security for 2FA management
+# Details:
+Design and implement the security dashboard allowing users to enable/disable TOTP, register WebAuthn devices, view and regenerate recovery codes. Use shadcn/ui components for consistent styling.
+
+# Test Strategy:
+Navigate through security dashboard and test all 2FA management features including device registration and code generation.
+
+# Subtasks:
+## 1. Build TOTP Setup Component [pending]
+### Dependencies: None
+### Description: Implement the TOTP setup UI allowing users to view a QR code and enter a generated code for verification.
+### Details:
+Use shadcn/ui components for form and layout. Fetch TOTP secret and QR code data via tRPC. Display QR code with a library like qrcode.react. Provide an input for users to enter the 6-digit code. Handle loading, success, and error states with clear feedback.
+
+## 2. Build WebAuthn Management Component [pending]
+### Dependencies: None
+### Description: Create the WebAuthn UI to list registered devices and initiate new device registration.
+### Details:
+Use shadcn/ui list and button components. Fetch registered authenticator credentials via tRPC and render a device list with metadata. Implement registration flow: call tRPC to get challenge, invoke WebAuthn API, then verify assertion on the backend. Handle permissions, errors, and loading states.
+
+## 3. Build Recovery Codes Component [pending]
+### Dependencies: None
+### Description: Develop the recovery codes UI to securely display current codes and allow regeneration.
+### Details:
+Use shadcn/ui cards and buttons. Fetch current recovery codes via tRPC and display them in a masked or reveal-on-click format. Implement regeneration flow: confirm user action in a modal, call tRPC to regenerate, then update the list. Support copy-to-clipboard and handle loading/errors.
+
+## 4. Integrate Components with Backend [pending]
+### Dependencies: 13.1, 13.2, 13.3
+### Description: Integrate TOTP, WebAuthn, and recovery codes components with backend procedures, managing state and UI flows.
+### Details:
+Wire each component to the corresponding tRPC endpoints for setup, verification, registration, listing, and regeneration. Use a global state management solution (e.g., React Context or Zustand) to coordinate modal visibility and loading indicators. Ensure consistent error handling, spinners, and success notifications across all components.
+

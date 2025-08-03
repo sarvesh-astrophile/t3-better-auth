@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
-import { createTRPCRouter, publicProcedure, protectedProcedure } from "@/server/api/trpc";
+import { createTRPCRouter, publicProcedure, protectedProcedure, verifiedProcedure } from "@/server/api/trpc";
 import { auth } from "@/lib/auth";
 
 export const authRouter = createTRPCRouter({
@@ -9,13 +9,17 @@ export const authRouter = createTRPCRouter({
     return {
       session: ctx.session,
       user: ctx.user,
+      isAuthenticated: ctx.isAuthenticated,
+      isEmailVerified: ctx.isEmailVerified,
+      requiresVerification: ctx.requiresVerification,
     };
   }),
 
-  getUserProfile: protectedProcedure.query(({ ctx }) => {
+  getUserProfile: verifiedProcedure.query(({ ctx }) => {
     return {
       user: ctx.user,
       session: ctx.session,
+      isEmailVerified: ctx.isEmailVerified,
     };
   }),
 
@@ -85,32 +89,6 @@ export const authRouter = createTRPCRouter({
         };
       } catch (error: any) {
         console.error("Sign in error:", error);
-        
-        // Check if the error is due to unverified email
-        if (error.message?.includes('email not verified') || error.status === 403) {
-          // Store or update unverified login attempt
-          try {
-            await ctx.db.unverifiedLogin.upsert({
-              where: { email: input.email },
-              update: { 
-                lastLoginAttempt: new Date(),
-              },
-              create: {
-                email: input.email,
-                password: input.password, // Note: This should be hashed in production
-                name: '', // We don't have name during sign-in
-                lastLoginAttempt: new Date(),
-              },
-            });
-          } catch (dbError) {
-            console.error("Failed to store unverified login:", dbError);
-          }
-          
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Please verify your email address before signing in",
-          });
-        }
         
         throw new TRPCError({
           code: "UNAUTHORIZED",

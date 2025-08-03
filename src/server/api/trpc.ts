@@ -13,6 +13,7 @@ import { ZodError } from "zod";
 import { db } from "@/server/db";
 import { auth } from "@/lib/auth";
 import type { Session, User } from "@/lib/auth";
+import { getSessionWithVerification } from "@/lib/session-utils";
 
 /**
  * 1. CONTEXT
@@ -27,15 +28,16 @@ import type { Session, User } from "@/lib/auth";
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-	// Get the session from better-auth
-	const session = await auth.api.getSession({
-		headers: opts.headers,
-	});
-
+	// Get the session with verification status from better-auth
+	const sessionWithVerification = await getSessionWithVerification(opts.headers);
+	
 	return {
 		db,
-		session,
-		user: session?.user,
+		session: sessionWithVerification.session,
+		user: sessionWithVerification.user,
+		isAuthenticated: sessionWithVerification.isAuthenticated,
+		isEmailVerified: sessionWithVerification.isEmailVerified,
+		requiresVerification: sessionWithVerification.requiresVerification,
 		...opts,
 	};
 };
@@ -119,13 +121,14 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  *
  * If you want a query or mutation to ONLY be accessible to logged in users, use this. It verifies
  * the session is valid and guarantees `ctx.session.user` is not null.
+ * Note: This does NOT check email verification status.
  *
  * @see https://trpc.io/docs/procedures
  */
 export const protectedProcedure = t.procedure
 	.use(timingMiddleware)
 	.use(({ ctx, next }) => {
-		if (!ctx.session || !ctx.user) {
+		if (!ctx.session || !ctx.user || !ctx.isAuthenticated) {
 			throw new TRPCError({ code: "UNAUTHORIZED" });
 		}
 		return next({
@@ -134,6 +137,42 @@ export const protectedProcedure = t.procedure
 				// infers the `session` as non-nullable
 				session: ctx.session,
 				user: ctx.user,
+			},
+		});
+	});
+
+/**
+ * Verified (authenticated + email verified) procedure
+ *
+ * If you want a query or mutation to ONLY be accessible to users with verified emails, use this.
+ * It verifies the session is valid AND the email is verified.
+ *
+ * @see https://trpc.io/docs/procedures
+ */
+export const verifiedProcedure = t.procedure
+	.use(timingMiddleware)
+	.use(({ ctx, next }) => {
+		if (!ctx.session || !ctx.user || !ctx.isAuthenticated) {
+			throw new TRPCError({ 
+				code: "UNAUTHORIZED",
+				message: "You must be logged in to access this resource"
+			});
+		}
+		
+		if (!ctx.isEmailVerified) {
+			throw new TRPCError({ 
+				code: "FORBIDDEN",
+				message: "You must verify your email address to access this resource"
+			});
+		}
+		
+		return next({
+			ctx: {
+				...ctx,
+				// infers the `session` as non-nullable and verified
+				session: ctx.session,
+				user: ctx.user,
+				isEmailVerified: true, // guaranteed to be true
 			},
 		});
 	});

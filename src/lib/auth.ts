@@ -13,7 +13,7 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: true, // Enable email verification
+    requireEmailVerification: false, // Allow unverified users to login but restrict access via middleware
     sendResetPassword: async ({ user, url, token }, request) => {
       await sendPasswordResetEmail({
         to: user.email,

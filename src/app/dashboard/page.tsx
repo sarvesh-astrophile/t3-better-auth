@@ -13,23 +13,28 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import { LogoutButton } from "./_components/logout-button";
+import { VerificationBanner } from "@/components/verification-status";
+import { getSessionWithVerification } from "@/lib/session-utils";
 
 export default async function DashboardPage() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const sessionData = await getSessionWithVerification(await headers());
 
-  if (!session) {
+  if (!sessionData.isAuthenticated) {
     redirect("/auth/login");
   }
 
-  // Check if user's email is verified
-  if (!session.user.emailVerified) {
-    const verificationUrl = `/auth/verification-pending?email=${encodeURIComponent(session.user.email)}`;
+  // Check if user's email is verified - redirect to OTP verification
+  if (!sessionData.isEmailVerified) {
+    const verificationUrl = `/auth/verify-otp?email=${encodeURIComponent(sessionData.user?.email || '')}`;
     redirect(verificationUrl);
   }
 
-  const { user } = session;
+  const { user } = sessionData;
+  
+  // Additional safety check (shouldn't happen due to middleware)
+  if (!user) {
+    redirect("/auth/login");
+  }
 
   return (
     <div className="min-h-screen bg-muted">
@@ -45,12 +50,12 @@ export default async function DashboardPage() {
           
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
-              Welcome, {user.name}
+              Welcome, {user?.name}
             </span>
             <Avatar className="size-8">
-              <AvatarImage src={user.image || undefined} />
+              <AvatarImage src={user?.image || undefined} />
               <AvatarFallback>
-                {user.name
+                {user?.name
                   ?.split(" ")
                   .map((n) => n[0])
                   .join("")
@@ -61,6 +66,9 @@ export default async function DashboardPage() {
           </div>
         </div>
       </header>
+
+      {/* Verification Status Banner */}
+      <VerificationBanner className="container mx-auto mt-4 px-4" />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
@@ -141,25 +149,25 @@ export default async function DashboardPage() {
               <div>
                 <h4 className="font-medium">Session ID</h4>
                 <p className="text-sm text-muted-foreground font-mono">
-                  {session.session.id}
+                  {sessionData.session?.id || "N/A"}    
                 </p>
               </div>
               <div>
                 <h4 className="font-medium">Expires At</h4>
                 <p className="text-sm text-muted-foreground">
-                  {new Date(session.session.expiresAt).toLocaleString()}
+                  {sessionData.session?.expiresAt ? new Date(sessionData.session.expiresAt).toLocaleString() : "N/A"}
                 </p>
               </div>
               <div>
                 <h4 className="font-medium">User Agent</h4>
                 <p className="text-sm text-muted-foreground">
-                  {session.session.userAgent || "Unknown"}
+                  {sessionData.session?.userAgent || "Unknown"}
                 </p>
               </div>
               <div>
                 <h4 className="font-medium">IP Address</h4>
                 <p className="text-sm text-muted-foreground">
-                  {session.session.ipAddress || "Unknown"}
+                  {sessionData.session?.ipAddress || "Unknown"}
                 </p>
               </div>
             </div>

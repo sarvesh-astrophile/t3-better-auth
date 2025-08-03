@@ -48,26 +48,15 @@ export function LoginForm({
     } catch (error: any) {
       console.error("Login error:", error)
       
-      // Check if the error is related to email verification
-      if (error?.message?.includes("email") && error?.message?.includes("verify")) {
+      // Handle any remaining verification-related errors (edge cases)
+      if (error?.status === 403 || 
+          error?.message?.includes("verify") || 
+          error?.message?.includes("verification")) {
         toast({
           title: "Email Verification Required",
-          description: "Please verify your email address before signing in.",
-          variant: "destructive",
+          description: "Please verify your email address to continue.",
         })
-        // Redirect to verification pending page with email
-        router.push(`/auth/verification-pending?email=${encodeURIComponent(email)}`)
-        return
-      }
-      
-      // Check for unverified user error
-      if (error?.message?.includes("not verified") || error?.message?.includes("verification")) {
-        toast({
-          title: "Email Verification Required",
-          description: "Please verify your email address before signing in.",
-          variant: "destructive",
-        })
-        router.push(`/auth/verification-pending?email=${encodeURIComponent(email)}`)
+        router.push(`/auth/verify-otp?email=${encodeURIComponent(email)}`)
         return
       }
       

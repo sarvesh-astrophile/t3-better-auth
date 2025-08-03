@@ -68,3 +68,4 @@ node_modules/
 # sqlite
 *.sqlite
 *.db
+prisma/dev.db

@@ -1,0 +1,170 @@
+---
+description: Rules for maintaining and updating the tasks.md file and project dashboard
+globs: ["tasks.md", "**/*.md"]
+alwaysApply: true
+---
+
+# Task Management Rules
+
+## 📋 Core Rules for tasks.md Maintenance
+
+### 1. **After Every Task Completion**
+- **MUST** update task status in both detailed section AND summary table
+- **MUST** update dashboard progress percentages 
+- **MUST** recalculate "Next Recommended Task"
+- **MUST** update dependency metrics (tasks ready to work on, blocked tasks)
+- **MUST** verify critical path is still accurate
+
+### 2. **Status Update Protocol**
+When changing any task status:
+```
+✅ completed | 🔄 in-progress | ⭕ pending | ❌ blocked
+```
+- Update BOTH the detailed task section (1.1, 1.2, etc.) AND the summary table
+- Update the dashboard progress bar calculation
+- Check if completion unblocks dependent tasks
+- Update "Tasks ready to work on" count
+
+### 3. **Dashboard Maintenance Requirements**
+
+#### Progress Tracking:
+```
+### Tasks Progress: ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ XX% (Y/21)
+- **Done:** X | **In Progress:** Y | **Pending:** Z | **Blocked:** 0
+```
+- Recalculate percentages after each status change
+- Update visual progress bar (use █ for completed, ░ for remaining)
+- Verify totals add up to 21 main tasks
+
+#### Next Recommended Task:
+- **MUST** identify the next logical task to work on
+- Consider dependencies, priority, and current progress
+- Update task ID, title, priority, dependencies, and complexity
+- Provide clear rationale for why this task is recommended
+
+### 4. **Table Synchronization Rules**
+
+#### Summary Table Updates:
+- **Status column** must match detailed sections exactly
+- **Dependencies** must be verified and updated if tasks complete
+- **Assignment** changes must be reflected immediately
+- **Priority** adjustments must update both table and dashboard
+
+#### Consistency Checks:
+- Task IDs must match between detailed sections and table
+- Status icons must be consistent (⭕🔄✅❌)
+- Priority colors must match (🔴🟡🟢)
+- Complexity ratings must be preserved
+
+### 5. **Dependency Management Rules**
+
+#### When a task is completed:
+- **MUST** check all dependent tasks and update their status if unblocked
+- **MUST** update "Tasks ready to work on" count
+- **MUST** update "Tasks blocked by dependencies" count
+- **MUST** recalculate critical path if a critical task completes
+
+#### Dependency Chain Verification:
+- Verify no circular dependencies exist
+- Ensure dependency references are valid task IDs
+- Update dependency metrics in dashboard
+
+### 6. **Assignment and Workload Rules**
+
+#### Assignment Updates:
+- When reassigning tasks, update BOTH detailed section AND summary table
+- Update "Assignment Distribution" statistics
+- Consider parallel execution opportunities
+- Flag potential bottlenecks (too many tasks on one person)
+
+#### Workload Balancing:
+- Monitor assignment distribution percentages
+- Suggest task delegation when appropriate
+- Update workload warnings in Quick Stats
+
+### 7. **Progress Reporting Standards**
+
+#### Weekly Progress Updates:
+- Update completion percentages
+- Identify blockers and risks
+- Update timeline estimates if needed
+- Review and adjust priorities if necessary
+
+#### Milestone Tracking:
+- Mark major milestone completions
+- Update estimated timeline based on actual progress
+- Adjust complexity ratings based on actual difficulty
+
+### 8. **Quality Assurance Rules**
+
+#### Before Committing Changes:
+- **VERIFY** all totals add up correctly
+- **VERIFY** status consistency between sections
+- **VERIFY** dependency references are valid
+- **VERIFY** progress bars reflect actual completion
+- **VERIFY** next recommended task makes logical sense
+
+#### Regular Maintenance:
+- Review task complexity ratings quarterly
+- Update priority levels based on changing requirements
+- Validate critical path accuracy
+- Ensure assignment distribution is optimal
+
+### 9. **Automation Guidelines**
+
+#### Status Change Triggers:
+```
+When task X.Y is marked complete:
+1. Update status in detailed section
+2. Update status in summary table  
+3. Recalculate dashboard metrics
+4. Check dependent tasks
+5. Update next recommended task
+6. Verify critical path
+```
+
+#### Dashboard Refresh Protocol:
+```
+After any task status change:
+1. Recalculate progress percentages
+2. Update visual progress bars
+3. Update task counts (Done/In Progress/Pending/Blocked)
+4. Update dependency metrics
+5. Identify next recommended task
+6. Update Quick Stats section
+```
+
+### 10. **Error Prevention Rules**
+
+#### Common Mistakes to Avoid:
+- ❌ Updating only detailed section OR table (not both)
+- ❌ Forgetting to update dashboard metrics
+- ❌ Invalid dependency references
+- ❌ Inconsistent status icons/colors
+- ❌ Mathematical errors in progress calculations
+
+#### Validation Checklist:
+- [ ] Status consistency across all sections
+- [ ] Mathematical accuracy in percentages
+- [ ] Valid dependency references
+- [ ] Logical next task recommendation
+- [ ] Proper icon/color usage
+- [ ] Complete information in all required fields
+
+## 🚀 Implementation Protocol
+
+### Every Time You Update tasks.md:
+1. **Read** current state of entire tasks.md file
+2. **Update** specific task status (detailed section + table)
+3. **Recalculate** all dashboard metrics
+4. **Verify** dependency impacts
+5. **Update** next recommended task
+6. **Review** for consistency and accuracy
+7. **Commit** changes with descriptive message
+
+### Success Metrics:
+- ✅ Dashboard always reflects current reality
+- ✅ No inconsistencies between sections
+- ✅ Dependencies are always accurate
+- ✅ Next recommended task is always logical
+- ✅ Progress tracking enables effective project management

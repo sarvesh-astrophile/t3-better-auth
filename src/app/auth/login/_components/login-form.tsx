@@ -45,8 +45,32 @@ export function LoginForm({
       })
       
       router.push("/dashboard")
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error)
+      
+      // Check if the error is related to email verification
+      if (error?.message?.includes("email") && error?.message?.includes("verify")) {
+        toast({
+          title: "Email Verification Required",
+          description: "Please verify your email address before signing in.",
+          variant: "destructive",
+        })
+        // Redirect to verification pending page with email
+        router.push(`/auth/verification-pending?email=${encodeURIComponent(email)}`)
+        return
+      }
+      
+      // Check for unverified user error
+      if (error?.message?.includes("not verified") || error?.message?.includes("verification")) {
+        toast({
+          title: "Email Verification Required",
+          description: "Please verify your email address before signing in.",
+          variant: "destructive",
+        })
+        router.push(`/auth/verification-pending?email=${encodeURIComponent(email)}`)
+        return
+      }
+      
       toast({
         title: "Error",
         description: "Invalid email or password. Please try again.",
@@ -128,7 +152,7 @@ export function LoginForm({
                 <div className="flex items-center">
                   <Label htmlFor="password">Password</Label>
                   <a
-                    href="#"
+                    href="/auth/forgot-password"
                     className="ml-auto text-sm underline-offset-4 hover:underline"
                   >
                     Forgot your password?

@@ -25,7 +25,12 @@ export function AuthShowcase() {
     setIsSigningOut(true);
     try {
       await signOut({
-        callbackURL: "/",
+        fetchOptions: {
+          headers: {
+            "x-trpc-source": "react-no-stream",
+          },
+        },
+        query: { callbackURL: "/" },
       });
       toast({
         title: "Success",

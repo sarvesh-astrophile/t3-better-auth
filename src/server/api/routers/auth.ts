@@ -112,4 +112,128 @@ export const authRouter = createTRPCRouter({
       });
     }
   }),
+
+  sendVerificationEmail: publicProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        callbackURL: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        await auth.api.sendVerificationEmail({
+          body: {
+            email: input.email,
+            callbackURL: input.callbackURL || "/dashboard",
+          },
+          headers: ctx.headers,
+        });
+
+        return {
+          success: true,
+          message: "Verification email sent successfully",
+        };
+      } catch (error) {
+        console.error("Send verification email error:", error);
+        
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to send verification email",
+        });
+      }
+    }),
+
+  verifyEmail: publicProcedure
+    .input(
+      z.object({
+        token: z.string(),
+        callbackURL: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        await auth.api.verifyEmail({
+          query: {
+            token: input.token,
+            callbackURL: input.callbackURL || "/dashboard",
+          },
+          headers: ctx.headers,
+        });
+
+        return {
+          success: true,
+          message: "Email verified successfully",
+        };
+      } catch (error) {
+        console.error("Verify email error:", error);
+        
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid or expired verification token",
+        });
+      }
+    }),
+
+  forgotPassword: publicProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        redirectTo: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        await auth.api.forgetPassword({
+          body: {
+            email: input.email,
+            redirectTo: input.redirectTo || "/auth/reset-password",
+          },
+          headers: ctx.headers,
+        });
+
+        return {
+          success: true,
+          message: "Password reset email sent successfully",
+        };
+      } catch (error) {
+        console.error("Forgot password error:", error);
+        
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to send password reset email",
+        });
+      }
+    }),
+
+  resetPassword: publicProcedure
+    .input(
+      z.object({
+        token: z.string(),
+        newPassword: z.string().min(8),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        await auth.api.resetPassword({
+          body: {
+            token: input.token,
+            newPassword: input.newPassword,
+          },
+          headers: ctx.headers,
+        });
+
+        return {
+          success: true,
+          message: "Password reset successfully",
+        };
+      } catch (error) {
+        console.error("Reset password error:", error);
+        
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid or expired reset token",
+        });
+      }
+    }),
 });

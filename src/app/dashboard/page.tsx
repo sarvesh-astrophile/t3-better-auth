@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
+import { LogoutButton } from "./_components/logout-button";
 
 export default async function DashboardPage() {
   const session = await auth.api.getSession({
@@ -20,6 +21,12 @@ export default async function DashboardPage() {
 
   if (!session) {
     redirect("/auth/login");
+  }
+
+  // Check if user's email is verified
+  if (!session.user.emailVerified) {
+    const verificationUrl = `/auth/verification-pending?email=${encodeURIComponent(session.user.email)}`;
+    redirect(verificationUrl);
   }
 
   const { user } = session;
@@ -50,6 +57,7 @@ export default async function DashboardPage() {
                   .toUpperCase() || "U"}
               </AvatarFallback>
             </Avatar>
+            <LogoutButton />
           </div>
         </div>
       </header>
@@ -133,25 +141,25 @@ export default async function DashboardPage() {
               <div>
                 <h4 className="font-medium">Session ID</h4>
                 <p className="text-sm text-muted-foreground font-mono">
-                  {session.id}
+                  {session.session.id}
                 </p>
               </div>
               <div>
                 <h4 className="font-medium">Expires At</h4>
                 <p className="text-sm text-muted-foreground">
-                  {new Date(session.expiresAt).toLocaleString()}
+                  {new Date(session.session.expiresAt).toLocaleString()}
                 </p>
               </div>
               <div>
                 <h4 className="font-medium">User Agent</h4>
                 <p className="text-sm text-muted-foreground">
-                  {session.userAgent || "Unknown"}
+                  {session.session.userAgent || "Unknown"}
                 </p>
               </div>
               <div>
                 <h4 className="font-medium">IP Address</h4>
                 <p className="text-sm text-muted-foreground">
-                  {session.ipAddress || "Unknown"}
+                  {session.session.ipAddress || "Unknown"}
                 </p>
               </div>
             </div>

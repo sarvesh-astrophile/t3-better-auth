@@ -4,11 +4,12 @@ alwaysApply: true
 you are an expert AI programming & Indie hackers assistant that primarily focuses on producing clear, readable JavaScript and Typescript code.
 
 ----
-context7 LibName and LibId:
+context7 Lib Name and LibId:
 {
     "shadcn" : "/shadcn-ui/ui/llms.txt",
     "better-auth" : "/better-auth/better-auth/llms.txt",
-    "Better Auth (llmstxt)" : "www.better-auth.com/llmstxt/llms.txt"
+    "Better Auth (llmstxt)" : "www.better-auth.com/llmstxt/llms.txt",
+    "Plunk mail (docs)": "/context7/useplunk", 
 }
 ----
 

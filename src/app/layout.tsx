@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { TRPCReactProvider } from "@/trpc/react";
 import { Toaster } from "sonner";
+import { DevEmailLink } from "@/components/dev-email-link";
 
 export const metadata: Metadata = {
 	title: "Create T3 App",
@@ -27,7 +28,8 @@ export default async function RootLayout({
 		<html lang="en" className={`${geist.variable}`}>
 			<body>
 				<TRPCReactProvider headers={new Headers(headersList)}>{children}</TRPCReactProvider>
-				<Toaster />	
+				<Toaster />
+				<DevEmailLink />
 			</body>
 		</html>
 	);

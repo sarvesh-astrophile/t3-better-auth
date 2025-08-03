@@ -33,26 +33,13 @@ export function SignupForm({
   const signUpMutation = api.auth.signUp.useMutation({
     onSuccess: async () => {
       toast({
-        title: "Success",
-        description: "Account created successfully! Signing you in...",
+        title: "Account Created Successfully!",
+        description: "Please check your email to verify your account before signing in.",
       })
       
-      // Automatically sign in the user after successful signup
-      try {
-        await signIn.email({
-          email,
-          password,
-          callbackURL: "/dashboard",
-        })
-        router.push("/dashboard")
-      } catch (error) {
-        console.error("Auto-signin error:", error)
-        toast({
-          title: "Account Created",
-          description: "Please sign in with your new account.",
-        })
-        router.push("/auth/login")
-      }
+      // Redirect to verification pending page with the email
+      router.push(`/auth/verification-pending?email=${encodeURIComponent(email)}`)
+      setIsLoading(false)
     },
     onError: (error) => {
       toast({

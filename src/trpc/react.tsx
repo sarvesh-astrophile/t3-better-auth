@@ -1,7 +1,12 @@
 "use client";
 
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { httpBatchStreamLink, loggerLink } from "@trpc/client";
+import {
+	httpBatchStreamLink,
+	loggerLink,
+	splitLink,
+	httpBatchLink,
+} from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
 import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
 import { useState } from "react";
@@ -38,8 +43,11 @@ export type RouterInputs = inferRouterInputs<AppRouter>;
  */
 export type RouterOutputs = inferRouterOutputs<AppRouter>;
 
-export function TRPCReactProvider(props: { children: React.ReactNode }) {
-	const queryClient = getQueryClient();
+export function TRPCReactProvider(props: {
+	children: React.ReactNode;
+	headers: Headers;
+}) {
+	const [queryClient] = useState(() => getQueryClient());
 
 	const [trpcClient] = useState(() =>
 		api.createClient({
@@ -49,14 +57,43 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
 						process.env.NODE_ENV === "development" ||
 						(op.direction === "down" && op.result instanceof Error),
 				}),
-				httpBatchStreamLink({
-					transformer: SuperJSON,
-					url: `${getBaseUrl()}/api/trpc`,
-					headers: () => {
-						const headers = new Headers();
-						headers.set("x-trpc-source", "nextjs-react");
-						return headers;
+				splitLink({
+					condition(op) {
+						return (
+							op.path.startsWith("auth.") ||
+							op.path.startsWith("session.")
+						);
 					},
+					true: httpBatchLink({
+						url: `${getBaseUrl()}/api/trpc`,
+						transformer: SuperJSON,
+						headers() {
+							const heads = new Map(props.headers);
+							heads.set("x-trpc-source", "react-no-stream");
+							return Object.fromEntries(heads);
+						},
+						fetch: (url: URL | RequestInfo, options?: RequestInit) => {
+							return fetch(url, {
+								...options,
+								credentials: "include",
+							});
+						},
+					}),
+					false: httpBatchStreamLink({
+						url: `${getBaseUrl()}/api/trpc`,
+						transformer: SuperJSON,
+						headers() {
+							const heads = new Map(props.headers);
+							heads.set("x-trpc-source", "react-stream");
+							return Object.fromEntries(heads);
+						},
+						fetch: (url: URL | RequestInfo, options?: RequestInit) => {
+							return fetch(url, {
+								...options,
+								credentials: "include",
+							});
+						},
+					}),
 				}),
 			],
 		}),

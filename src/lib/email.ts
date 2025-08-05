@@ -1,19 +1,6 @@
 import nodemailer from "nodemailer";
 import { env } from "@/env";
 
-// Development email storage for localhost
-const developmentEmails: Array<{
-  to: string;
-  subject: string;
-  html: string;
-  text: string;
-  otp?: string;
-  url?: string;
-  token?: string;
-  type: 'email-verification' | 'sign-in' | 'forget-password' | 'reset';
-  timestamp: Date;
-}> = [];
-
 // Check if we're in development mode
 const isDevelopment = env.NODE_ENV === "development";
 
@@ -42,34 +29,31 @@ export const createEmailTransporter = () => {
 };
 
 // Development email display functions
-const logEmailToConsole = (email: typeof developmentEmails[0]) => {
+const logOTPToConsole = (to: string, otp: string, type: string) => {
   console.log("\n" + "=".repeat(80));
-  console.log(`📧 EMAIL ${email.type.toUpperCase()} (DEVELOPMENT MODE)`);
+  console.log(`📧 EMAIL VERIFICATION OTP (DEVELOPMENT MODE)`);
   console.log("=".repeat(80));
-  console.log(`📬 To: ${email.to}`);
-  console.log(`📌 Subject: ${email.subject}`);
-  if (email.otp) {
-    console.log(`🔐 OTP: ${email.otp}`);
-  }
-  if (email.url) {
-    console.log(`🔗 URL: ${email.url}`);
-  }
-  if (email.token) {
-    console.log(`🔑 Token: ${email.token}`);
-  }
-  console.log(`⏰ Sent: ${email.timestamp.toLocaleString()}`);
-  console.log("=".repeat(80));
-  console.log("📖 Email Content (Text):");
-  console.log(email.text);
+  console.log(`📬 To: ${to}`);
+  console.log(`🔐 OTP CODE: ${otp}`);
+  console.log(`📋 Type: ${type}`);
+  console.log(`⏰ Sent: ${new Date().toLocaleString()}`);
   console.log("=".repeat(80) + "\n");
 };
 
-// Get development emails (for API endpoint)
-export const getDevelopmentEmails = () => developmentEmails;
-
-// Clear development emails
-export const clearDevelopmentEmails = () => {
-  developmentEmails.length = 0;
+const logEmailToConsole = (to: string, subject: string, url?: string, token?: string) => {
+  console.log("\n" + "=".repeat(80));
+  console.log(`📧 EMAIL (DEVELOPMENT MODE)`);
+  console.log("=".repeat(80));
+  console.log(`📬 To: ${to}`);
+  console.log(`📌 Subject: ${subject}`);
+  if (url) {
+    console.log(`🔗 URL: ${url}`);
+  }
+  if (token) {
+    console.log(`🔑 Token: ${token}`);
+  }
+  console.log(`⏰ Sent: ${new Date().toLocaleString()}`);
+  console.log("=".repeat(80) + "\n");
 };
 
 // Send OTP email
@@ -84,26 +68,9 @@ export const sendOTPEmail = async ({
 }) => {
   const host = env.BETTER_AUTH_URL ? new URL(env.BETTER_AUTH_URL).host : 'localhost:3000';
   
-  const emailData = {
-    to,
-    subject: getOTPSubject(type, host),
-    html: getOTPEmailHtml({ otp, type, host }),
-    text: getOTPEmailText({ otp, type, host }),
-    otp,
-    type,
-    timestamp: new Date(),
-  };
-
-  // In development, log to console and store for API access
+  // In development, just log OTP to console and return success
   if (isDevelopment) {
-    developmentEmails.unshift(emailData); // Add to beginning of array
-    
-    // Keep only last 20 emails
-    if (developmentEmails.length > 20) {
-      developmentEmails.length = 20;
-    }
-    
-    logEmailToConsole(emailData);
+    logOTPToConsole(to, otp, type);
     
     // Return mock success response
     return {
@@ -121,9 +88,9 @@ export const sendOTPEmail = async ({
     const result = await transporter.sendMail({
       from: env.EMAIL_FROM,
       to,
-      subject: emailData.subject,
-      html: emailData.html,
-      text: emailData.text,
+      subject: getOTPSubject(type, host),
+      html: getOTPEmailHtml({ otp, type, host }),
+      text: getOTPEmailText({ otp, type, host }),
     });
 
     const failed = result.rejected.concat(result.pending).filter(Boolean);
@@ -160,28 +127,11 @@ export const sendVerificationEmail = async ({
 }) => {
   const { host } = new URL(url);
   const escapedHost = host.replace(/\./g, "&#8203;.");
-  
-  const emailData = {
-    to,
-    subject: `Verify your email address for ${host}`,
-    html: getVerificationEmailHtml({ url, host: escapedHost }),
-    text: getVerificationEmailText({ url, host }),
-    url,
-    token,
-    type: 'email-verification' as const,
-    timestamp: new Date(),
-  };
+  const subject = `Verify your email address for ${host}`;
 
-  // In development, log to console and store for API access
+  // In development, just log to console and return success
   if (isDevelopment) {
-    developmentEmails.unshift(emailData); // Add to beginning of array
-    
-    // Keep only last 20 emails
-    if (developmentEmails.length > 20) {
-      developmentEmails.length = 20;
-    }
-    
-    logEmailToConsole(emailData);
+    logEmailToConsole(to, subject, url, token);
     
     // Return mock success response
     return {
@@ -199,9 +149,9 @@ export const sendVerificationEmail = async ({
     const result = await transporter.sendMail({
       from: env.EMAIL_FROM,
       to,
-      subject: emailData.subject,
-      html: emailData.html,
-      text: emailData.text,
+      subject,
+      html: getVerificationEmailHtml({ url, host: escapedHost }),
+      text: getVerificationEmailText({ url, host }),
     });
 
     const failed = result.rejected.concat(result.pending).filter(Boolean);
@@ -238,28 +188,11 @@ export const sendPasswordResetEmail = async ({
 }) => {
   const { host } = new URL(url);
   const escapedHost = host.replace(/\./g, "&#8203;.");
-  
-  const emailData = {
-    to,
-    subject: `Reset your password for ${host}`,
-    html: getPasswordResetEmailHtml({ url, host: escapedHost }),
-    text: getPasswordResetEmailText({ url, host }),
-    url,
-    token,
-    type: 'reset' as const,
-    timestamp: new Date(),
-  };
+  const subject = `Reset your password for ${host}`;
 
-  // In development, log to console and store for API access
+  // In development, just log to console and return success
   if (isDevelopment) {
-    developmentEmails.unshift(emailData); // Add to beginning of array
-    
-    // Keep only last 20 emails
-    if (developmentEmails.length > 20) {
-      developmentEmails.length = 20;
-    }
-    
-    logEmailToConsole(emailData);
+    logEmailToConsole(to, subject, url, token);
     
     // Return mock success response
     return {
@@ -277,9 +210,9 @@ export const sendPasswordResetEmail = async ({
     const result = await transporter.sendMail({
       from: env.EMAIL_FROM,
       to,
-      subject: emailData.subject,
-      html: emailData.html,
-      text: emailData.text,
+      subject,
+      html: getPasswordResetEmailHtml({ url, host: escapedHost }),
+      text: getPasswordResetEmailText({ url, host }),
     });
 
     const failed = result.rejected.concat(result.pending).filter(Boolean);

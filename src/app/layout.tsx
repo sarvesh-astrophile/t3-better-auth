@@ -6,7 +6,6 @@ import { headers } from "next/headers";
 
 import { TRPCReactProvider } from "@/trpc/react";
 import { Toaster } from "sonner";
-import { DevEmailLink } from "@/components/dev-email-link";
 
 export const metadata: Metadata = {
 	title: "Create T3 App",
@@ -29,7 +28,6 @@ export default async function RootLayout({
 			<body>
 				<TRPCReactProvider headers={new Headers(headersList)}>{children}</TRPCReactProvider>
 				<Toaster />
-				<DevEmailLink />
 			</body>
 		</html>
 	);

@@ -27,39 +27,47 @@ export function LoginForm({
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
+  const utils = api.useUtils()
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
-      await signIn.email({
+      // Sign in the user
+      const result = await signIn.email({
         email,
         password,
-        callbackURL: "/dashboard",
       })
       
-      toast({
-        title: "Success",
-        description: "You have been signed in successfully.",
-      })
+      // Invalidate session cache and refetch to get updated verification status
+      await utils.auth.getSession.invalidate()
+      const sessionData = await utils.auth.getSession.fetch()
       
-      router.push("/dashboard")
+      if (sessionData?.isAuthenticated) {
+        if (sessionData.isEmailVerified) {
+          // User is verified - redirect to dashboard
+          toast({
+            title: "Success",
+            description: "You have been signed in successfully.",
+          })
+          router.push("/dashboard")
+        } else {
+          // User is unverified - redirect to verification
+          toast({
+            title: "Email Verification Required",
+            description: "Please verify your email address to continue.",
+          })
+          router.push(`/auth/verify-otp?email=${encodeURIComponent(email)}`)
+        }
+      } else {
+        // Fallback - shouldn't happen but redirect to dashboard
+        router.push("/dashboard")
+      }
     } catch (error: any) {
       console.error("Login error:", error)
       
-      // Handle any remaining verification-related errors (edge cases)
-      if (error?.status === 403 || 
-          error?.message?.includes("verify") || 
-          error?.message?.includes("verification")) {
-        toast({
-          title: "Email Verification Required",
-          description: "Please verify your email address to continue.",
-        })
-        router.push(`/auth/verify-otp?email=${encodeURIComponent(email)}`)
-        return
-      }
-      
+      // Handle authentication errors
       toast({
         title: "Error",
         description: "Invalid email or password. Please try again.",
@@ -75,8 +83,33 @@ export function LoginForm({
     try {
       await signIn.social({
         provider: "google",
-        callbackURL: "/dashboard",
       })
+      
+      // Invalidate session cache and refetch to get updated verification status
+      await utils.auth.getSession.invalidate()
+      const sessionData = await utils.auth.getSession.fetch()
+      
+      if (sessionData?.isAuthenticated) {
+        if (sessionData.isEmailVerified) {
+          // User is verified - redirect to dashboard
+          toast({
+            title: "Success",
+            description: "You have been signed in successfully.",
+          })
+          router.push("/dashboard")
+        } else {
+          // User is unverified - redirect to verification
+          const userEmail = sessionData.user?.email || ""
+          toast({
+            title: "Email Verification Required",
+            description: "Please verify your email address to continue.",
+          })
+          router.push(`/auth/verify-otp?email=${encodeURIComponent(userEmail)}`)
+        }
+      } else {
+        // Fallback - redirect to dashboard
+        router.push("/dashboard")
+      }
     } catch (error) {
       console.error("Google login error:", error)
       toast({
@@ -84,6 +117,7 @@ export function LoginForm({
         description: "Failed to sign in with Google. Please try again.",
         variant: "destructive",
       })
+    } finally {
       setIsLoading(false)
     }
   }

@@ -23,8 +23,19 @@ export default async function DashboardPage() {
     redirect("/auth/login");
   }
 
-  // Check if user's email is verified - redirect to OTP verification
+  // Debug logging in development
+  if (process.env.NODE_ENV === "development") {
+    console.log("🏠 Dashboard Debug:", {
+      isAuthenticated: sessionData.isAuthenticated,
+      isEmailVerified: sessionData.isEmailVerified,
+      userEmail: sessionData.user?.email,
+      userId: sessionData.user?.id,
+    });
+  }
+
+  // Note: Middleware should handle verification redirects, but keeping this as fallback
   if (!sessionData.isEmailVerified) {
+    console.log("⚠️ Dashboard: User not verified, redirecting...");
     const verificationUrl = `/auth/verify-otp?email=${encodeURIComponent(sessionData.user?.email || '')}`;
     redirect(verificationUrl);
   }

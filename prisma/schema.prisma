@@ -23,10 +23,10 @@ model User {
   id            String    @id
   name          String
   email         String
-  emailVerified Boolean
+  emailVerified Boolean   @default(false)
   image         String?
-  createdAt     DateTime
-  updatedAt     DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
 
@@ -38,8 +38,8 @@ model Session {
   id        String   @id
   expiresAt DateTime
   token     String
-  createdAt DateTime
-  updatedAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   ipAddress String?
   userAgent String?
   userId    String
@@ -62,9 +62,10 @@ model Account {
   refreshTokenExpiresAt DateTime?
   scope                 String?
   password              String?
-  createdAt             DateTime
-  updatedAt             DateTime
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
+  @@unique([providerId, accountId])
   @@map("account")
 }
 
@@ -79,19 +80,7 @@ model Verification {
   attempts   Int      @default(0) // Track verification attempts
 
   @@unique([identifier, value])
+  @@index([identifier, type])
+  @@index([expiresAt])
   @@map("verification")
-}
-
-model UnverifiedLogin {
-  id        String   @id @default(cuid())
-  email     String   
-  password  String   // Hashed password
-  name      String   
-  image     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  lastLoginAttempt DateTime?
-
-  @@unique([email])
-  @@map("unverified_login")
 }

@@ -28,6 +28,10 @@ export const auth = betterAuth({
       otpLength: 6, // 6-digit OTP
       expiresIn: 300, // 5 minutes expiry
       allowedAttempts: 3, // Allow 3 verification attempts
+      
+      // Ensure session persistence during verification flow
+      disableSignUp: false, // Allow signup with email verification
+      
       async sendVerificationOTP({ email, otp, type }) {
         await sendOTPEmail({
           to: email,
@@ -58,10 +62,19 @@ export const auth = betterAuth({
       httpOnly: true,
       secure: env.NODE_ENV === "production",
       sameSite: "lax",
+      path: "/", // Ensure cookies are available across the entire domain
     },
     
     // Force secure cookies (useful for production)
     useSecureCookies: env.NODE_ENV === "production",
+    
+    // Database configuration
+    database: {
+      // Improve session handling during verification flow
+      generateId: () => {
+        return crypto.randomUUID();
+      },
+    },
   },
 });
 

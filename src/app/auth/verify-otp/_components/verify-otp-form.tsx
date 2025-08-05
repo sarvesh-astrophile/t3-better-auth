@@ -34,6 +34,7 @@ export function VerifyOTPForm({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const utils = api.useUtils();
   
   const emailFromParams = searchParams.get("email");
   const userEmail = emailFromParams || email;
@@ -42,15 +43,21 @@ export function VerifyOTPForm({
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const verifyOTPMutation = api.auth.verifyEmailOTP.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       setVerificationStatus("success");
+      
+      // Invalidate session query to ensure fresh verification status
+      await utils.auth.getSession.invalidate();
+      
       toast({
         title: "Email Verified",
         description: "Your email has been verified successfully!",
       });
-      // Redirect to dashboard after a delay
+      
+      // Redirect to dashboard after a delay with page refresh
       setTimeout(() => {
-        router.push("/dashboard");
+        // Force a page refresh to ensure fresh session data
+        window.location.href = "/dashboard";
       }, 2000);
     },
     onError: (error) => {
@@ -105,7 +112,7 @@ export function VerifyOTPForm({
       const pastedCode = value.slice(0, 6);
       const newOTP = [...otp];
       for (let i = 0; i < pastedCode.length && i < 6; i++) {
-        newOTP[i] = pastedCode[i];
+        newOTP[i] = pastedCode[i] || "";
       }
       setOTP(newOTP);
       
@@ -259,7 +266,9 @@ export function VerifyOTPForm({
                 {otp.map((digit, index) => (
                   <Input
                     key={index}
-                    ref={(el) => (otpRefs.current[index] = el)}
+                    ref={(el) => {
+                      otpRefs.current[index] = el;
+                    }}
                     type="text"
                     inputMode="numeric"
                     maxLength={6} // Allow paste

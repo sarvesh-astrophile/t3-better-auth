@@ -1,13 +1,25 @@
 "use client";
 
 import { createAuthClient } from "better-auth/react";
-import { emailOTPClient } from "better-auth/client/plugins";
+import { emailOTPClient, oneTapClient } from "better-auth/client/plugins";
 import { env } from "@/env";
 
 export const authClient = createAuthClient({
   baseURL: env.NEXT_PUBLIC_BETTER_AUTH_URL || "http://localhost:3000",
   plugins: [
     emailOTPClient(),
+    oneTapClient({
+      clientId: env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+      // Optional client configuration:
+      autoSelect: false, // Don't auto-select if only one account
+      cancelOnTapOutside: true, // Cancel when clicking outside
+      context: "signin", // Context for the One Tap
+      // Configure prompt behavior and exponential backoff:
+      promptOptions: {
+        baseDelay: 1000,   // Base delay in ms (default: 1000)
+        maxAttempts: 5     // Maximum number of attempts before triggering onPromptNotification (default: 5)
+      }
+    }),
   ],
 });
 
@@ -17,4 +29,5 @@ export const {
   signUp,
   useSession,
   getSession,
+  oneTap,
 } = authClient;

@@ -30,6 +30,7 @@ export const env = createEnv({
 	 */
 	client: {
 		NEXT_PUBLIC_BETTER_AUTH_URL: z.string().url().optional(),
+		NEXT_PUBLIC_GOOGLE_CLIENT_ID: z.string().optional(),
 	},
 
 	/**
@@ -44,6 +45,7 @@ export const env = createEnv({
 		GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
 		GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
 		NEXT_PUBLIC_BETTER_AUTH_URL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
+		NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
 		// Email configuration
 		SMTP_HOST: process.env.SMTP_HOST,
 		SMTP_PORT: process.env.SMTP_PORT,

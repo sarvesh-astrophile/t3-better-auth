@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { emailOTP } from "better-auth/plugins";
+import { emailOTP, oneTap } from "better-auth/plugins";
 import { PrismaClient } from "@prisma/client";
 import { env } from "@/env";
 import { sendOTPEmail, sendPasswordResetEmail } from "@/lib/email";
@@ -39,6 +39,10 @@ export const auth = betterAuth({
           type,
         });
       },
+    }),
+    oneTap({
+      // Enable Google One Tap authentication
+      disableSignup: false, // Allow new users to sign up via One Tap
     }),
   ],
   socialProviders: {

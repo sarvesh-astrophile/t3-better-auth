@@ -1,23 +1,85 @@
-"use client"
+"use client";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Key, Fingerprint, Usb, InfoIcon, CheckCircle2 } from "lucide-react"
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Key,
+  Fingerprint,
+  Usb,
+  InfoIcon,
+  CheckCircle2,
+  Loader2,
+} from "lucide-react";
+import { api } from "@/trpc/react";
+import { useToast } from "@/hooks/use-toast";
+import { startRegistration } from "@simplewebauthn/browser";
 
 export function WebAuthnSetupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const { toast } = useToast();
+  const [name, setName] = useState("");
+  const [isSupported, setIsSupported] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsSupported(
+      typeof window !== "undefined" &&
+        !!window.PublicKeyCredential &&
+        !!window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable
+    );
+  }, []);
+
+  const getRegistrationOptions = api.webauthn.getRegistrationOptions.useMutation();
+  const verifyRegistration = api.webauthn.verifyRegistration.useMutation();
+
+  const handleRegister = async () => {
+    if (!name) {
+      setError("Please provide a name for your authenticator.");
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const options = await getRegistrationOptions.mutateAsync({ name });
+
+      const attResp = await startRegistration({ optionsJSON: options });
+      
+      const verification = await verifyRegistration.mutateAsync({
+        name,
+        response: attResp,
+      });
+      
+      if (verification.verified) {
+        toast({
+          title: "Success",
+          description: "Authenticator registered successfully.",
+        });
+      } else {
+        setError("Failed to verify authenticator registration.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "An unexpected error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
@@ -28,68 +90,80 @@ export function WebAuthnSetupForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Device Support Check */}
-          <Alert>
-            <CheckCircle2 className="size-4" />
-            <AlertDescription>
-              Your device supports WebAuthn authentication. You can use security keys, fingerprint, or face recognition.
-            </AlertDescription>
-          </Alert>
+          {isSupported ? (
+            <Alert>
+              <CheckCircle2 className="size-4" />
+              <AlertDescription>
+                Your device supports WebAuthn authentication. You can use security
+                keys, fingerprint, or face recognition.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <Alert variant="destructive">
+              <InfoIcon className="size-4" />
+              <AlertDescription>
+                Your browser does not support WebAuthn.
+              </AlertDescription>
+            </Alert>
+          )}
 
-          {/* Authentication Methods */}
           <div className="space-y-4">
-            <h3 className="font-medium">Choose your authentication method</h3>
-            
+            <h3 className="font-medium">
+              Choose your authentication method
+            </h3>
             <div className="grid gap-4">
-              {/* Security Key Option */}
               <div className="border-border flex items-center space-x-4 rounded-lg border p-4">
                 <div className="bg-primary/10 text-primary flex size-12 items-center justify-center rounded-lg">
                   <Key className="size-6" />
                 </div>
                 <div className="flex-1">
                   <h4 className="font-medium">Security Key</h4>
-                  <p className="text-muted-foreground text-sm">Use a physical security key like YubiKey</p>
+                  <p className="text-muted-foreground text-sm">
+                    Use a physical security key like YubiKey
+                  </p>
                 </div>
-                <Button variant="outline">
+                <Button variant="outline" onClick={handleRegister} disabled={isLoading || !isSupported}>
                   <Usb className="mr-2 size-4" />
                   Add Key
                 </Button>
               </div>
 
-              {/* Biometric Option */}
               <div className="border-border flex items-center space-x-4 rounded-lg border p-4">
                 <div className="bg-primary/10 text-primary flex size-12 items-center justify-center rounded-lg">
                   <Fingerprint className="size-6" />
                 </div>
                 <div className="flex-1">
                   <h4 className="font-medium">Biometric Authentication</h4>
-                  <p className="text-muted-foreground text-sm">Use fingerprint, face, or voice recognition</p>
+                  <p className="text-muted-foreground text-sm">
+                    Use fingerprint, face, or voice recognition
+                  </p>
                 </div>
-                <Button variant="outline">
+                <Button variant="outline" onClick={handleRegister} disabled={isLoading || !isSupported}>
                   Setup Biometric
                 </Button>
               </div>
             </div>
           </div>
 
-          {/* Setup Instructions */}
           <div className="space-y-4">
             <h3 className="font-medium">Setup Instructions</h3>
             <div className="space-y-3 text-sm text-muted-foreground">
               <div className="flex gap-3">
-                <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-full text-xs font-medium">
+                <div className="bg-primary text-primary-foreground flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
                   1
                 </div>
                 <p>Click "Add Key" or "Setup Biometric" above</p>
               </div>
               <div className="flex gap-3">
-                <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-full text-xs font-medium">
+                <div className="bg-primary text-primary-foreground flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
                   2
                 </div>
-                <p>Follow the browser prompts to register your authenticator</p>
+                <p>
+                  Follow the browser prompts to register your authenticator
+                </p>
               </div>
               <div className="flex gap-3">
-                <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-full text-xs font-medium">
+                <div className="bg-primary text-primary-foreground flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
                   3
                 </div>
                 <p>Give your authenticator a memorable name</p>
@@ -97,37 +171,67 @@ export function WebAuthnSetupForm({
             </div>
           </div>
 
-          {/* Name the authenticator */}
           <div className="space-y-4">
             <div className="grid gap-3">
-              <Label htmlFor="authenticator-name">Authenticator Name</Label>
+              <Label htmlFor="authenticator-name">
+                Authenticator Name
+              </Label>
               <Input
                 id="authenticator-name"
                 type="text"
                 placeholder="My YubiKey"
-                />
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={isLoading}
+              />
             </div>
           </div>
+          
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-          {/* Action Buttons */}
           <div className="flex gap-2">
-            <Button type="button" variant="outline" className="flex-1">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                // router.back() or something similar
+              }}
+              disabled={isLoading}
+            >
               Cancel
             </Button>
-            <Button type="button" className="flex-1">
-              Register Authenticator
+            <Button
+              type="button"
+              className="flex-1"
+              onClick={handleRegister}
+              disabled={isLoading || !name || !isSupported}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Registering...
+                </>
+              ) : (
+                "Register Authenticator"
+              )}
             </Button>
           </div>
 
-          {/* Additional Info */}
           <Alert>
             <InfoIcon className="size-4" />
             <AlertDescription>
-              WebAuthn provides the highest level of security. Your authenticator never leaves your device, making it impossible to phish.
+              WebAuthn provides the highest level of security. Your
+              authenticator never leaves your device, making it impossible to
+              phish.
             </AlertDescription>
           </Alert>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

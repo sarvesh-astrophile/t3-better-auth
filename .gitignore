@@ -69,3 +69,4 @@ node_modules/
 *.sqlite
 *.db
 prisma/dev.db
+prisma/migrations/*

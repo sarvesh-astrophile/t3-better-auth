@@ -1,14 +1,14 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { emailOTP, oneTap, twoFactor } from "better-auth/plugins";
-import { PrismaClient } from "@prisma/client";
+import { db } from "@/server/db";
 import { env } from "@/env";
 import { sendOTPEmail, sendPasswordResetEmail } from "@/lib/email";
 
-const prisma = new PrismaClient();
+
 
 export const auth = betterAuth({
-  database: prismaAdapter(prisma, {
+  database: prismaAdapter(db, {
     provider: "sqlite",
   }),
   emailAndPassword: {
@@ -97,13 +97,7 @@ export const auth = betterAuth({
     // Force secure cookies (useful for production)
     useSecureCookies: env.NODE_ENV === "production",
     
-    // Database configuration
-    database: {
-      // Improve session handling during verification flow
-      generateId: () => {
-        return crypto.randomUUID();
-      },
-    },
+
   },
 });
 

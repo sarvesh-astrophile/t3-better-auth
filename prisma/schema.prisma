@@ -20,15 +20,22 @@ model Post {
 }
 
 model User {
-  id            String    @id
-  name          String
-  email         String
-  emailVerified Boolean   @default(false)
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
+  id                    String    @id
+  name                  String
+  email                 String
+  emailVerified         Boolean   @default(false)
+  image                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  sessions              Session[]
+  accounts              Account[]
+  authenticators        Authenticator[]
+  currentChallenge      String?
+
+  // Two-Factor Authentication fields
+  twoFactorEnabled      Boolean               @default(false)
+  twoFactorSecret       TwoFactorSecret?
+  twoFactorBackupCodes  TwoFactorBackupCode[]
 
   @@unique([email])
   @@map("user")
@@ -83,4 +90,47 @@ model Verification {
   @@index([identifier, type])
   @@index([expiresAt])
   @@map("verification")
+}
+
+model Authenticator {
+  id                   String  @id @default(cuid())
+  name                 String
+  credentialID         String  @unique
+  credentialPublicKey  Bytes
+  counter              BigInt
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@map("authenticator")
+}
+
+// Model for storing TOTP secrets for 2FA
+model TwoFactorSecret {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  secret    String
+  algorithm String
+  digits    Int
+  period    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("two_factor_secret")
+}
+
+// Model for storing 2FA backup codes
+model TwoFactorBackupCode {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String   @unique
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("two_factor_backup_code")
 }

@@ -72,11 +72,11 @@ export function TRPCReactProvider(props: {
 							heads.set("x-trpc-source", "react-no-stream");
 							return Object.fromEntries(heads);
 						},
-						fetch: (url: URL | RequestInfo, options?: RequestInit) => {
+						fetch: (url, options) => {
 							return fetch(url, {
 								...options,
 								credentials: "include",
-							});
+							} as RequestInit);
 						},
 					}),
 					false: httpBatchStreamLink({
@@ -87,11 +87,11 @@ export function TRPCReactProvider(props: {
 							heads.set("x-trpc-source", "react-stream");
 							return Object.fromEntries(heads);
 						},
-						fetch: (url: URL | RequestInfo, options?: RequestInit) => {
+						fetch: (url, options) => {
 							return fetch(url, {
 								...options,
 								credentials: "include",
-							});
+							} as RequestInit);
 						},
 					}),
 				}),

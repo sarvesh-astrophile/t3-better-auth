@@ -54,10 +54,11 @@ export function TOTPSetupForm({
   // Enable 2FA mutation
   const enableTwoFactorMutation = api.auth.enableTwoFactor.useMutation({
     onSuccess: (data) => {
-      if (data.data) {
+      if (data.data?.totpURI) {
+        const secret = new URL(data.data.totpURI).searchParams.get("secret")
         setTotpData({
           totpURI: data.data.totpURI,
-          secret: data.data.secret,
+          secret: secret ?? undefined,
           backupCodes: data.data.backupCodes,
         })
         setStep("setup")

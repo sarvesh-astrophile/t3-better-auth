@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/trpc/react";
+import { useSession } from "@/lib/auth-client";
 import { Loader2, Mail, CheckCircle2, AlertTriangle } from "lucide-react";
 
 export function VerificationPendingForm({
@@ -27,10 +28,22 @@ export function VerificationPendingForm({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { data: session, isPending } = useSession();
 
   // Get email from URL params if available
   const emailFromParams = searchParams.get("email");
   const userEmail = emailFromParams || email;
+
+  // Redirect verified users immediately to prevent spam
+  useEffect(() => {
+    if (!isPending && session?.user?.emailVerified) {
+      toast({
+        title: "Already Verified",
+        description: "Your email is already verified. Redirecting to dashboard...",
+      });
+      window.location.href = "/dashboard";
+    }
+  }, [session, isPending, toast]);
 
   const resendVerificationMutation = api.auth.sendVerificationOTP.useMutation({
     onSuccess: () => {

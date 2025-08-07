@@ -74,6 +74,10 @@ export async function middleware(request: NextRequest) {
   // Define verification routes that unverified users can access
   const verificationRoutes = ["/auth/verify-otp", "/auth/verification-pending"];
   const isVerificationRoute = verificationRoutes.some(route => pathname.startsWith(route));
+  
+  // Define 2FA setup routes that require email verification
+  const twoFactorSetupRoutes = ["/auth/2fa/setup-totp"];
+  const isTwoFactorSetupRoute = twoFactorSetupRoutes.some(route => pathname.startsWith(route));
 
   // Redirect unauthenticated users from protected pages to login
   if (!isAuthenticated && isProtectedRoute) {
@@ -110,6 +114,14 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(verificationUrl, request.url));
     }
     
+    // Redirect unverified users from 2FA setup to email verification first
+    if (isEmailVerified === false && isTwoFactorSetupRoute) {
+      const verificationUrl = userEmail 
+        ? `/auth/verify-otp?email=${encodeURIComponent(userEmail)}`
+        : '/auth/verify-otp';
+      return NextResponse.redirect(new URL(verificationUrl, request.url));
+    }
+    
     // If verification status is unknown (null), let the request through
     // The backend components (dashboard, tRPC) will handle verification checks
     if (process.env.NODE_ENV === "development" && isEmailVerified === null) {
@@ -127,6 +139,7 @@ export const config = {
     "/auth/signup", 
     "/auth/verify-otp",
     "/auth/verification-pending",
+    "/auth/2fa/setup-totp",
     "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 };

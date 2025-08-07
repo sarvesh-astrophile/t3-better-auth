@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -9,134 +11,230 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Copy, Download, Shield, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { Copy, Shield, RefreshCw, Loader2, AlertTriangle } from "lucide-react"
+import { api } from "@/trpc/react"
+import { useToast } from "@/hooks/use-toast"
+import { useSession } from "@/lib/auth-client"
 
 export function RecoveryCodesForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  // Mock recovery codes - in real app these would come from the server
-  const recoveryCodes = [
-    "a1b2-c3d4-e5f6",
-    "g7h8-i9j0-k1l2",
-    "m3n4-o5p6-q7r8",
-    "s9t0-u1v2-w3x4",
-    "y5z6-a7b8-c9d0",
-    "e1f2-g3h4-i5j6",
-    "k7l8-m9n0-o1p2",
-    "q3r4-s5t6-u7v8",
-  ]
+  const { data: session } = useSession()
+  const { toast } = useToast()
+  const router = useRouter()
+  
+  const [password, setPassword] = useState("")
+  const [backupCodes, setBackupCodes] = useState<string[]>([])
+  const [showCodes, setShowCodes] = useState(false)
 
-  const copyAllCodes = () => {
-    navigator.clipboard.writeText(recoveryCodes.join('\n'))
+  // Generate backup codes mutation
+  const generateBackupCodesMutation = api.auth.generateBackupCodes.useMutation({
+    onSuccess: (data) => {
+      if (data.data?.backupCodes) {
+        setBackupCodes(data.data.backupCodes)
+        setShowCodes(true)
+        toast({
+          title: "Backup Codes Generated",
+          description: "New backup codes have been generated. Save them in a secure place.",
+        })
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    },
+  })
+
+  const handleGenerateCodes = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!password.trim()) {
+      toast({
+        title: "Password Required",
+        description: "Please enter your password to generate backup codes.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    await generateBackupCodesMutation.mutateAsync({
+      password,
+    })
   }
 
-  const downloadCodes = () => {
-    const blob = new Blob([recoveryCodes.join('\n')], { type: 'text/plain' })
+  const copyBackupCodes = async () => {
+    if (!backupCodes.length) return
+    
+    try {
+      const codesText = backupCodes.join('\n')
+      await navigator.clipboard.writeText(codesText)
+      toast({
+        title: "Copied!",
+        description: "Backup codes copied to clipboard.",
+      })
+    } catch (error) {
+      toast({
+        title: "Copy Failed",
+        description: "Failed to copy backup codes.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const downloadBackupCodes = () => {
+    if (!backupCodes.length) return
+    
+    const codesText = backupCodes.join('\n')
+    const blob = new Blob([codesText], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'recovery-codes.txt'
+    a.download = 'backup-codes.txt'
+    document.body.appendChild(a)
     a.click()
+    document.body.removeChild(a)
     URL.revokeObjectURL(url)
+    
+    toast({
+      title: "Downloaded",
+      description: "Backup codes have been downloaded as a text file.",
+    })
+  }
+
+  if (!showCodes) {
+    return (
+      <div className={cn("flex flex-col gap-6", className)} {...props}>
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">Manage Recovery Codes</CardTitle>
+            <CardDescription>
+              Generate new backup codes for your two-factor authentication
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Alert className="mb-6">
+              <AlertTriangle className="size-4" />
+              <AlertDescription>
+                <strong>Important:</strong> Generating new backup codes will invalidate all existing backup codes. 
+                Make sure to save the new codes in a secure location.
+              </AlertDescription>
+            </Alert>
+
+            <form onSubmit={handleGenerateCodes} className="space-y-4">
+              <div className="grid gap-3">
+                <Label htmlFor="password">Confirm Your Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => router.push("/dashboard")}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  className="flex-1"
+                  disabled={generateBackupCodesMutation.isPending || !password.trim()}
+                >
+                  {generateBackupCodesMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 size-4" />
+                      Generate New Codes
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Recovery Codes</CardTitle>
+          <CardTitle className="text-xl">Your Recovery Codes</CardTitle>
           <CardDescription>
-            Save these codes in a secure location. Each code can only be used once.
+            Save these backup codes in a secure place. Each code can only be used once.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Warning Alert */}
-          <Alert className="border-amber-200 bg-amber-50 text-amber-800">
-            <AlertTriangle className="size-4" />
+          <Alert>
+            <Shield className="size-4" />
             <AlertDescription>
-              <strong>Important:</strong> Store these codes safely. They're your only way to recover your account if you lose access to your other 2FA methods.
+              These codes can be used to access your account if you lose access to your authenticator app. 
+              Store them safely and never share them with anyone.
             </AlertDescription>
           </Alert>
 
-          {/* Recovery Codes Grid */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium">Your Recovery Codes</h3>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={copyAllCodes}>
-                  <Copy className="mr-2 size-4" />
-                  Copy All
-                </Button>
-                <Button variant="outline" size="sm" onClick={downloadCodes}>
-                  <Download className="mr-2 size-4" />
-                  Download
-                </Button>
-              </div>
+          <div className="bg-muted p-6 rounded-lg">
+            <div className="grid grid-cols-2 gap-3 text-sm font-mono">
+              {backupCodes.map((code, index) => (
+                <div key={index} className="p-3 bg-background rounded border text-center">
+                  {code}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={copyBackupCodes}
+                className="flex-1"
+              >
+                <Copy className="mr-2 size-4" />
+                Copy All Codes
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={downloadBackupCodes}
+                className="flex-1"
+              >
+                <Shield className="mr-2 size-4" />
+                Download as File
+              </Button>
             </div>
             
-            <div className="bg-muted rounded-lg p-4">
-              <div className="grid grid-cols-2 gap-3">
-                {recoveryCodes.map((code, index) => (
-                  <div
-                    key={index}
-                    className="bg-background border-border flex items-center justify-between rounded border p-3 font-mono text-sm"
-                  >
-                    <span>{code}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigator.clipboard.writeText(code)}
-                    >
-                      <Copy className="size-3" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <Button 
+              onClick={() => router.push("/dashboard")}
+              className="w-full"
+            >
+              Return to Dashboard
+            </Button>
           </div>
 
-          {/* Security Instructions */}
-          <div className="space-y-4">
-            <h3 className="font-medium">Security Guidelines</h3>
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <div className="flex gap-3">
-                <Shield className="text-green-600 mt-0.5 size-4 flex-shrink-0" />
-                <p>Store these codes in a password manager or secure offline location</p>
-              </div>
-              <div className="flex gap-3">
-                <Shield className="text-green-600 mt-0.5 size-4 flex-shrink-0" />
-                <p>Never share these codes with anyone</p>
-              </div>
-              <div className="flex gap-3">
-                <Shield className="text-green-600 mt-0.5 size-4 flex-shrink-0" />
-                <p>Each code can only be used once - generate new codes after using several</p>
-              </div>
-              <div className="flex gap-3">
-                <Shield className="text-green-600 mt-0.5 size-4 flex-shrink-0" />
-                <p>You can regenerate new codes anytime from your security settings</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Confirmation */}
-          <Alert className="border-green-200 bg-green-50 text-green-800">
-            <CheckCircle2 className="size-4" />
+          <Alert>
+            <AlertTriangle className="size-4" />
             <AlertDescription>
-              Please confirm you have safely stored these recovery codes before continuing.
+              <strong>Remember:</strong> Each backup code can only be used once. When you use a backup code, 
+              it will be permanently deleted from your account.
             </AlertDescription>
           </Alert>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" className="flex-1">
-              Regenerate Codes
-            </Button>
-            <Button type="button" className="flex-1">
-              I've Saved My Codes
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>

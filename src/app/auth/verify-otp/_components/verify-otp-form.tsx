@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/trpc/react";
+import { useSession } from "@/lib/auth-client";
 import { Loader2, CheckCircle2, AlertCircle, Mail, RefreshCw } from "lucide-react";
 
 export function VerifyOTPForm({
@@ -35,9 +36,21 @@ export function VerifyOTPForm({
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const utils = api.useUtils();
+  const { data: session, isPending } = useSession();
   
   const emailFromParams = searchParams.get("email");
   const userEmail = emailFromParams || email;
+
+  // Redirect verified users immediately to prevent spam
+  useEffect(() => {
+    if (!isPending && session?.user?.emailVerified) {
+      toast({
+        title: "Already Verified",
+        description: "Your email is already verified. Redirecting to dashboard...",
+      });
+      window.location.href = "/dashboard";
+    }
+  }, [session, isPending, toast]);
   
   // References for OTP inputs
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);

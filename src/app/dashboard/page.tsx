@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { GalleryVerticalEnd, User, Calendar, Shield } from "lucide-react";
+import { GalleryVerticalEnd, User, Calendar, Shield, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -117,12 +117,16 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <div className="text-2xl font-bold text-green-600">Secure</div>
+                <div className="text-2xl font-bold text-green-600">
+                  {user.twoFactorEnabled ? "Enhanced" : "Secure"}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Your account is protected with Better Auth
+                  {user.twoFactorEnabled && " + 2FA"}
                 </p>
-                <div className="text-xs text-muted-foreground">
-                  Email verified: {user.emailVerified ? "Yes" : "No"}
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <div>Email verified: {user.emailVerified ? "✓ Yes" : "✗ No"}</div>
+                  <div>Two-factor auth: {user.twoFactorEnabled ? "✓ Enabled" : "✗ Disabled"}</div>
                 </div>
               </div>
             </CardContent>
@@ -131,17 +135,37 @@ export default async function DashboardPage() {
           {/* Quick Actions Card */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
+              <CardTitle className="text-sm font-medium">Security Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
+              {!user.twoFactorEnabled ? (
+                <Button asChild variant="default" className="w-full">
+                  <Link href="/auth/2fa/setup-totp">
+                    <Shield className="mr-2 size-4" />
+                    Enable Two-Factor Auth
+                  </Link>
+                </Button>
+              ) : (
+                <>
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href="/auth/2fa/recovery-codes">
+                      <Shield className="mr-2 size-4" />
+                      Manage Recovery Codes
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href="/auth/2fa/verify-2fa">
+                      <Smartphone className="mr-2 size-4" />
+                      Test 2FA
+                    </Link>
+                  </Button>
+                </>
+              )}
               <Button asChild variant="outline" className="w-full">
-                <Link href="/auth/2fa/setup-totp">Setup 2FA</Link>
-              </Button>
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/auth/2fa/recovery-codes">Recovery Codes</Link>
-              </Button>
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/">Back to Home</Link>
+                <Link href="/">
+                  <Calendar className="mr-2 size-4" />
+                  Back to Home
+                </Link>
               </Button>
             </CardContent>
           </Card>

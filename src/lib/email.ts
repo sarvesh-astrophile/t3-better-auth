@@ -64,7 +64,7 @@ export const sendOTPEmail = async ({
 }: {
   to: string;
   otp: string;
-  type: 'email-verification' | 'sign-in' | 'forget-password';
+  type: 'email-verification' | 'sign-in' | 'forget-password' | 'two-factor';
 }) => {
   const host = env.BETTER_AUTH_URL ? new URL(env.BETTER_AUTH_URL).host : 'localhost:3000';
   
@@ -342,7 +342,7 @@ const getPasswordResetEmailText = ({ url, host }: { url: string; host: string })
 };
 
 // OTP email helper functions
-const getOTPSubject = (type: 'email-verification' | 'sign-in' | 'forget-password', host: string) => {
+const getOTPSubject = (type: 'email-verification' | 'sign-in' | 'forget-password' | 'two-factor', host: string) => {
   switch (type) {
     case 'email-verification':
       return `Verify your email address for ${host}`;
@@ -350,6 +350,8 @@ const getOTPSubject = (type: 'email-verification' | 'sign-in' | 'forget-password
       return `Your sign-in code for ${host}`;
     case 'forget-password':
       return `Reset your password for ${host}`;
+    case 'two-factor':
+      return `Your two-factor authentication code for ${host}`;
     default:
       return `Your verification code for ${host}`;
   }
@@ -375,6 +377,8 @@ const getOTPEmailHtml = ({ otp, type, host }: { otp: string; type: string; host:
         return `Sign in to <strong>${host}</strong>`;
       case 'forget-password':
         return `Reset your password for <strong>${host}</strong>`;
+      case 'two-factor':
+        return `Two-factor authentication for <strong>${host}</strong>`;
       default:
         return `Your verification code for <strong>${host}</strong>`;
     }
@@ -388,6 +392,8 @@ const getOTPEmailHtml = ({ otp, type, host }: { otp: string; type: string; host:
         return 'Enter this code to sign in to your account:';
       case 'forget-password':
         return 'Enter this code to reset your password:';
+      case 'two-factor':
+        return 'Enter this code to complete your two-factor authentication:';
       default:
         return 'Enter this verification code:';
     }
@@ -439,6 +445,8 @@ const getOTPEmailText = ({ otp, type, host }: { otp: string; type: string; host:
         return `Sign in to ${host}`;
       case 'forget-password':
         return `Reset your password for ${host}`;
+      case 'two-factor':
+        return `Two-factor authentication for ${host}`;
       default:
         return `Your verification code for ${host}`;
     }

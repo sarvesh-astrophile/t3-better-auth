@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { emailOTP, oneTap } from "better-auth/plugins";
+import { emailOTP, oneTap, twoFactor } from "better-auth/plugins";
 import { PrismaClient } from "@prisma/client";
 import { env } from "@/env";
 import { sendOTPEmail, sendPasswordResetEmail } from "@/lib/email";
@@ -22,6 +22,7 @@ export const auth = betterAuth({
       });
     },
   },
+  appName: "Better Auth T3", // Used as issuer for TOTP
   plugins: [
     emailOTP({
       overrideDefaultEmailVerification: true, // Replace link-based verification with OTP
@@ -43,6 +44,30 @@ export const auth = betterAuth({
     oneTap({
       // Enable Google One Tap authentication
       disableSignup: false, // Allow new users to sign up via One Tap
+    }),
+    twoFactor({
+      // TOTP configuration
+      totpOptions: {
+        digits: 6, // 6-digit codes
+        period: 30, // 30-second validity
+      },
+      // OTP configuration for email-based 2FA (fallback)
+      otpOptions: {
+        async sendOTP({ user, otp }) {
+          await sendOTPEmail({
+            to: user.email,
+            otp,
+            type: 'two-factor',
+          });
+        },
+        period: 300, // 5 minutes validity for email OTP
+      },
+      // Backup codes configuration
+      backupCodeOptions: {
+        amount: 10, // Generate 10 backup codes
+        length: 8,  // 8-character backup codes
+      },
+      issuer: "Better Auth T3", // App name for authenticator apps
     }),
   ],
   socialProviders: {

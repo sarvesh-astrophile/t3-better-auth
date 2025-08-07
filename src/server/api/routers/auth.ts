@@ -126,6 +126,14 @@ export const authRouter = createTRPCRouter({
     )
     .mutation(async ({ input, ctx }) => {
       try {
+        // Additional server-side check to prevent verified users from requesting new codes
+        if (ctx.isAuthenticated && ctx.isEmailVerified && input.type === 'email-verification') {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Your email is already verified",
+          });
+        }
+
         await auth.api.sendVerificationOTP({
           body: {
             email: input.email,
@@ -140,6 +148,16 @@ export const authRouter = createTRPCRouter({
         };
       } catch (error) {
         console.error("Send verification OTP error:", error);
+        
+        // Handle specific better-auth errors
+        if (error instanceof Error) {
+          if (error.message.includes("already verified") || error.message.includes("verified")) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Your email is already verified",
+            });
+          }
+        }
         
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -157,6 +175,14 @@ export const authRouter = createTRPCRouter({
     )
     .mutation(async ({ input, ctx }) => {
       try {
+        // Additional server-side check to prevent verified users from verifying again
+        if (ctx.isAuthenticated && ctx.isEmailVerified) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Your email is already verified",
+          });
+        }
+
         await auth.api.verifyEmailOTP({
           body: {
             email: input.email,
@@ -171,6 +197,16 @@ export const authRouter = createTRPCRouter({
         };
       } catch (error) {
         console.error("Verify email OTP error:", error);
+        
+        // Handle specific better-auth errors
+        if (error instanceof Error) {
+          if (error.message.includes("already verified") || error.message.includes("verified")) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Your email is already verified",
+            });
+          }
+        }
         
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -301,6 +337,249 @@ export const authRouter = createTRPCRouter({
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Invalid or expired reset token",
+        });
+      }
+    }),
+
+  // Two-Factor Authentication endpoints
+  enableTwoFactor: protectedProcedure
+    .input(
+      z.object({
+        password: z.string(),
+        issuer: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const result = await auth.api.enableTwoFactor({
+          body: {
+            password: input.password,
+            issuer: input.issuer,
+          },
+          headers: ctx.headers,
+        });
+
+        return {
+          success: true,
+          message: "Two-factor authentication setup initiated",
+          data: result,
+        };
+      } catch (error) {
+        console.error("Enable 2FA error:", error);
+        
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Failed to enable two-factor authentication. Please check your password.",
+        });
+      }
+    }),
+
+  disableTwoFactor: protectedProcedure
+    .input(
+      z.object({
+        password: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        await auth.api.disableTwoFactor({
+          body: {
+            password: input.password,
+          },
+          headers: ctx.headers,
+        });
+
+        return {
+          success: true,
+          message: "Two-factor authentication disabled successfully",
+        };
+      } catch (error) {
+        console.error("Disable 2FA error:", error);
+        
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Failed to disable two-factor authentication. Please check your password.",
+        });
+      }
+    }),
+
+  getTotpUri: protectedProcedure
+    .input(
+      z.object({
+        password: z.string(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      try {
+        const result = await auth.api.getTOTPURI({
+          body: {
+            password: input.password,
+          },
+          headers: ctx.headers,
+        });
+
+        return {
+          success: true,
+          data: result,
+        };
+      } catch (error) {
+        console.error("Get TOTP URI error:", error);
+        
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Failed to get TOTP URI. Please check your password.",
+        });
+      }
+    }),
+
+  verifyTotp: publicProcedure
+    .input(
+      z.object({
+        code: z.string().length(6),
+        trustDevice: z.boolean().optional().default(false),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        await auth.api.verifyTOTP({
+          body: {
+            code: input.code,
+            trustDevice: input.trustDevice,
+          },
+          headers: ctx.headers,
+        });
+
+        return {
+          success: true,
+          message: "TOTP code verified successfully",
+        };
+      } catch (error) {
+        console.error("Verify TOTP error:", error);
+        
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid or expired TOTP code",
+        });
+      }
+    }),
+
+  sendTwoFactorOtp: protectedProcedure
+    .input(
+      z.object({
+        trustDevice: z.boolean().optional().default(false),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        await auth.api.sendTwoFactorOTP({
+          body: {
+            trustDevice: input.trustDevice,
+          },
+          headers: ctx.headers,
+        });
+
+        return {
+          success: true,
+          message: "Two-factor OTP sent successfully",
+        };
+      } catch (error) {
+        console.error("Send 2FA OTP error:", error);
+        
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to send two-factor OTP",
+        });
+      }
+    }),
+
+  verifyTwoFactorOtp: publicProcedure
+    .input(
+      z.object({
+        code: z.string(),
+        trustDevice: z.boolean().optional().default(false),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        await auth.api.verifyTwoFactorOTP({
+          body: {
+            code: input.code,
+            trustDevice: input.trustDevice,
+          },
+          headers: ctx.headers,
+        });
+
+        return {
+          success: true,
+          message: "Two-factor OTP verified successfully",
+        };
+      } catch (error) {
+        console.error("Verify 2FA OTP error:", error);
+        
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid or expired two-factor OTP code",
+        });
+      }
+    }),
+
+  generateBackupCodes: protectedProcedure
+    .input(
+      z.object({
+        password: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const result = await auth.api.generateBackupCodes({
+          body: {
+            password: input.password,
+          },
+          headers: ctx.headers,
+        });
+
+        return {
+          success: true,
+          message: "Backup codes generated successfully",
+          data: result,
+        };
+      } catch (error) {
+        console.error("Generate backup codes error:", error);
+        
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Failed to generate backup codes. Please check your password.",
+        });
+      }
+    }),
+
+  verifyBackupCode: publicProcedure
+    .input(
+      z.object({
+        code: z.string(),
+        trustDevice: z.boolean().optional().default(false),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        await auth.api.verifyBackupCode({
+          body: {
+            code: input.code,
+            trustDevice: input.trustDevice,
+          },
+          headers: ctx.headers,
+        });
+
+        return {
+          success: true,
+          message: "Backup code verified successfully",
+        };
+      } catch (error) {
+        console.error("Verify backup code error:", error);
+        
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid backup code",
         });
       }
     }),

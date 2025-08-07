@@ -1,7 +1,7 @@
 "use client";
 
 import { createAuthClient } from "better-auth/react";
-import { emailOTPClient, oneTapClient, twoFactorClient } from "better-auth/client/plugins";
+import { emailOTPClient, oneTapClient, twoFactorClient, passkeyClient } from "better-auth/client/plugins";
 import { env } from "@/env";
 
 export const authClient = createAuthClient({
@@ -20,6 +20,7 @@ export const authClient = createAuthClient({
         maxAttempts: 5     // Maximum number of attempts before triggering onPromptNotification (default: 5)
       }
     }),
+    passkeyClient(),
     twoFactorClient({
       onTwoFactorRedirect() {
         // Redirect to 2FA verification page when needed
@@ -37,4 +38,5 @@ export const {
   getSession,
   oneTap,
   twoFactor,
+  passkey,
 } = authClient;

@@ -20,22 +20,23 @@ model Post {
 }
 
 model User {
-  id                    String    @id
-  name                  String
-  email                 String
-  emailVerified         Boolean   @default(false)
-  image                 String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  sessions              Session[]
-  accounts              Account[]
-  authenticators        Authenticator[]
-  currentChallenge      String?
+  id               String          @id
+  name             String
+  email            String
+  emailVerified    Boolean         @default(false)
+  image            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  sessions         Session[]
+  accounts         Account[]
 
   // Two-Factor Authentication fields
-  twoFactorEnabled      Boolean               @default(false)
-  twoFactorSecret       TwoFactorSecret?
-  twoFactorBackupCodes  TwoFactorBackupCode[]
+  twoFactorEnabled     Boolean               @default(false)
+  twoFactorSecret      TwoFactorSecret?
+  twoFactorBackupCodes TwoFactorBackupCode[]
+
+  passkeys   Passkey[]
+  twofactors TwoFactor[]
 
   @@unique([email])
   @@map("user")
@@ -78,8 +79,8 @@ model Account {
 
 model Verification {
   id         String   @id
-  identifier String   // Email address
-  value      String   // Verification token/OTP
+  identifier String // Email address
+  value      String // Verification token/OTP
   expiresAt  DateTime // Token expiration time
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -92,23 +93,10 @@ model Verification {
   @@map("verification")
 }
 
-model Authenticator {
-  id                   String  @id @default(cuid())
-  name                 String
-  credentialID         String  @unique
-  credentialPublicKey  Bytes
-  counter              BigInt
-  credentialDeviceType String
-  credentialBackedUp   Boolean
-  transports           String?
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String
-
-  @@map("authenticator")
-}
 
 // Model for storing TOTP secrets for 2FA
+
 model TwoFactorSecret {
   id        String   @id @default(cuid())
   userId    String   @unique
@@ -124,6 +112,7 @@ model TwoFactorSecret {
 }
 
 // Model for storing 2FA backup codes
+
 model TwoFactorBackupCode {
   id        String   @id @default(cuid())
   userId    String
@@ -133,4 +122,31 @@ model TwoFactorBackupCode {
   createdAt DateTime @default(now())
 
   @@map("two_factor_backup_code")
+}
+
+model Passkey {
+  id           String    @id
+  name         String?
+  publicKey    String
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime  @default(now())
+  aaguid       String?
+
+  @@map("passkey")
+}
+
+model TwoFactor {
+  id          String @id
+  secret      String
+  backupCodes String
+  userId      String
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("twoFactor")
 }

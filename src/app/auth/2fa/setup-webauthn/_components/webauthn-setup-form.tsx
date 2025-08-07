@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,33 +22,60 @@ import {
   CheckCircle2,
   Loader2,
 } from "lucide-react";
-import { api } from "@/trpc/react";
 import { useToast } from "@/hooks/use-toast";
-import { startRegistration } from "@simplewebauthn/browser";
+import { passkey } from "@/lib/auth-client";
 
 export function WebAuthnSetupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
   const { toast } = useToast();
+  const router = useRouter();
   const [name, setName] = useState("");
   const [isSupported, setIsSupported] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsSupported(
-      typeof window !== "undefined" &&
-        !!window.PublicKeyCredential &&
-        !!window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable
-    );
+    // Check for WebAuthn support
+    const checkSupport = async () => {
+      if (typeof window !== "undefined" && window.PublicKeyCredential) {
+        try {
+          // WebAuthn is supported if PublicKeyCredential exists
+          // Platform authenticator availability is checked separately for each type
+          setIsSupported(true);
+          console.log("WebAuthn is supported on this device");
+          
+          // Check for platform authenticator availability
+          if (window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+            const platformAvailable = await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+            console.log("Platform authenticator available:", platformAvailable);
+          }
+          
+          // Check for conditional mediation support
+          if (window.PublicKeyCredential.isConditionalMediationAvailable) {
+            const conditionalAvailable = await window.PublicKeyCredential.isConditionalMediationAvailable();
+            console.log("Conditional mediation available:", conditionalAvailable);
+          }
+        } catch (error) {
+          console.error("Error checking WebAuthn support:", error);
+          setIsSupported(!!window.PublicKeyCredential);
+        }
+      } else {
+        setIsSupported(false);
+        console.log("WebAuthn is not supported on this device");
+      }
+    };
+    
+    checkSupport();
   }, []);
 
-  const getRegistrationOptions = api.webauthn.getRegistrationOptions.useMutation();
-  const verifyRegistration = api.webauthn.verifyRegistration.useMutation();
-
   const handleRegister = async () => {
-    if (!name) {
+    await handleRegisterWithType();
+  };
+
+  const handleRegisterWithType = async (authenticatorAttachment?: "platform" | "cross-platform") => {
+    if (!name.trim()) {
       setError("Please provide a name for your authenticator.");
       return;
     }
@@ -55,26 +83,53 @@ export function WebAuthnSetupForm({
     setError(null);
 
     try {
-      const options = await getRegistrationOptions.mutateAsync({ name });
-
-      const attResp = await startRegistration({ optionsJSON: options });
+      // Build options object according to Better Auth passkey plugin specs
+      const options: any = {
+        name: name.trim(),
+      };
       
-      const verification = await verifyRegistration.mutateAsync({
-        name,
-        response: attResp,
+      // Only add authenticatorAttachment if specified
+      if (authenticatorAttachment) {
+        options.authenticatorAttachment = authenticatorAttachment;
+      }
+      
+      const result = await passkey.addPasskey(options);
+      
+      console.log("Passkey registration result:", result);
+      
+      toast({
+        title: "Success",
+        description: `${authenticatorAttachment === "platform" ? "Biometric" : "Security key"} registered successfully!`,
       });
       
-      if (verification.verified) {
-        toast({
-          title: "Success",
-          description: "Authenticator registered successfully.",
-        });
-      } else {
-        setError("Failed to verify authenticator registration.");
-      }
+      // Redirect to dashboard
+      router.push("/dashboard");
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "An unexpected error occurred.");
+      console.error("Passkey registration error:", err);
+      const errorMessage = err.message || "An unexpected error occurred.";
+      setError(errorMessage);
+      
+      // Provide more specific error messages based on Better Auth error patterns
+      let userFriendlyMessage = errorMessage;
+      if (errorMessage.includes("NotAllowedError") || errorMessage.includes("AbortError")) {
+        userFriendlyMessage = "Registration was cancelled or timed out. Please try again.";
+      } else if (errorMessage.includes("NotSupportedError")) {
+        userFriendlyMessage = "This authenticator type is not supported on your device.";
+      } else if (errorMessage.includes("InvalidStateError")) {
+        userFriendlyMessage = "This authenticator is already registered.";
+      } else if (errorMessage.includes("ConstraintError")) {
+        userFriendlyMessage = "The authenticator doesn't meet the security requirements.";
+      } else if (errorMessage.includes("SecurityError")) {
+        userFriendlyMessage = "Security error occurred. Please ensure you're on a secure connection.";
+      } else if (errorMessage.includes("NotReadableError")) {
+        userFriendlyMessage = "Authenticator is not available or cannot be used.";
+      }
+      
+      toast({
+        title: "Registration Failed",
+        description: userFriendlyMessage,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -122,7 +177,11 @@ export function WebAuthnSetupForm({
                     Use a physical security key like YubiKey
                   </p>
                 </div>
-                <Button variant="outline" onClick={handleRegister} disabled={isLoading || !isSupported}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleRegisterWithType("cross-platform")} 
+                  disabled={isLoading || !isSupported}
+                >
                   <Usb className="mr-2 size-4" />
                   Add Key
                 </Button>
@@ -138,7 +197,11 @@ export function WebAuthnSetupForm({
                     Use fingerprint, face, or voice recognition
                   </p>
                 </div>
-                <Button variant="outline" onClick={handleRegister} disabled={isLoading || !isSupported}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleRegisterWithType("platform")} 
+                  disabled={isLoading || !isSupported}
+                >
                   Setup Biometric
                 </Button>
               </div>
@@ -198,9 +261,7 @@ export function WebAuthnSetupForm({
               type="button"
               variant="outline"
               className="flex-1"
-              onClick={() => {
-                // router.back() or something similar
-              }}
+              onClick={() => router.push("/dashboard")}
               disabled={isLoading}
             >
               Cancel

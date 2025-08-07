@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { GalleryVerticalEnd, User, Calendar, Shield, Smartphone } from "lucide-react";
+import { GalleryVerticalEnd, User, Calendar, Shield, Smartphone, Key } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -161,6 +161,18 @@ export default async function DashboardPage() {
                   </Button>
                 </>
               )}
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/auth/2fa/setup-webauthn">
+                  <Key className="mr-2 size-4" />
+                  Add Passkey / Security Key
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/auth/2fa/manage-authenticators">
+                  <Key className="mr-2 size-4" />
+                  Manage Passkeys
+                </Link>
+              </Button>
               <Button asChild variant="outline" className="w-full">
                 <Link href="/">
                   <Calendar className="mr-2 size-4" />

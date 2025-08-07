@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { signIn } from "@/lib/auth-client"
 import { api } from "@/trpc/react"
-import { Loader2 } from "lucide-react"
+import { Loader2, Key } from "lucide-react"
 
 export function LoginForm({
   className,
@@ -28,6 +28,27 @@ export function LoginForm({
   const router = useRouter()
   const { toast } = useToast()
   const utils = api.useUtils()
+
+  // Enable conditional UI for passkey autofill (Better Auth documentation)
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.PublicKeyCredential &&
+      window.PublicKeyCredential.isConditionalMediationAvailable
+    ) {
+      window.PublicKeyCredential.isConditionalMediationAvailable().then((available) => {
+        if (available) {
+          // Preload passkeys for conditional UI - this should initiate silently
+          signIn.passkey().catch((error) => {
+            // Silently fail if no passkeys available, user cancels, or not available
+            console.debug("Conditional UI passkey failed:", error);
+          });
+        }
+      }).catch((error) => {
+        console.debug("Conditional mediation check failed:", error);
+      });
+    }
+  }, [])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -122,6 +143,28 @@ export function LoginForm({
     }
   }
 
+  const handlePasskeyLogin = async () => {
+    setIsLoading(true)
+    try {
+      await signIn.passkey()
+      
+      toast({
+        title: "Success",
+        description: "You have been signed in successfully with your passkey.",
+      })
+      router.push("/dashboard")
+    } catch (error: any) {
+      console.error("Passkey login error:", error)
+      toast({
+        title: "Error", 
+        description: error.message || "Failed to sign in with passkey. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
@@ -152,6 +195,20 @@ export function LoginForm({
                 )}
                 Login with Google
               </Button>
+              
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={handlePasskeyLogin}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <Key className="mr-2 size-4" />
+                )}
+                Login with Passkey
+              </Button>
             </div>
             <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
               <span className="bg-card text-muted-foreground relative z-10 px-2">
@@ -167,6 +224,7 @@ export function LoginForm({
                   placeholder="m@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="username webauthn"
                   required
                   disabled={isLoading}
                 />
@@ -186,6 +244,7 @@ export function LoginForm({
                   type="password" 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password webauthn"
                   required 
                   disabled={isLoading}
                 />

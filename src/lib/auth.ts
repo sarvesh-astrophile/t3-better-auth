@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { emailOTP, oneTap, twoFactor } from "better-auth/plugins";
+import { passkey } from "better-auth/plugins/passkey";
 import { db } from "@/server/db";
 import { env } from "@/env";
 import { sendOTPEmail, sendPasswordResetEmail } from "@/lib/email";
@@ -44,6 +45,16 @@ export const auth = betterAuth({
     oneTap({
       // Enable Google One Tap authentication
       disableSignup: false, // Allow new users to sign up via One Tap
+    }),
+    passkey({
+      rpName: "Better Auth T3",
+      rpID: "localhost", // Change this to your domain in production
+      origin: "http://localhost:3000", // URL where registrations and authentications should occur
+      authenticatorSelection: {
+        authenticatorAttachment: undefined, // Allow both platform and cross-platform
+        userVerification: "preferred",
+        residentKey: "preferred",
+      },
     }),
     twoFactor({
       // TOTP configuration

@@ -20,10 +20,8 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Smartphone, Key, ShieldCheck, Loader2 } from "lucide-react";
-import { twoFactor, useSession } from "@/lib/auth-client";
+import { twoFactor, useSession, signIn } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
-import { api } from "@/trpc/react";
-import { startAuthentication } from "@simplewebauthn/browser";
 
 export function Verify2FAForm({
   className,
@@ -38,10 +36,7 @@ export function Verify2FAForm({
   const [trustDevice, setTrustDevice] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const getAuthenticationOptions =
-    api.webauthn.getAuthenticationOptions.useMutation();
-  const verifyAuthentication =
-    api.webauthn.verifyAuthentication.useMutation();
+
 
   // Handle TOTP verification via Better Auth client
   const handleTotpSubmit = async (e: React.FormEvent) => {
@@ -102,14 +97,35 @@ export function Verify2FAForm({
     e.preventDefault();
     setIsLoading(true);
     try {
-      const options = await getAuthenticationOptions.mutateAsync();
-      const asseResp = await startAuthentication({ optionsJSON: options });
-      await verifyAuthentication.mutateAsync(asseResp as any);
-      router.push("/dashboard");
+      // Use passkey sign-in for 2FA verification
+      const result = await signIn.passkey();
+      
+      if (result?.data) {
+        toast({
+          title: "Success",
+          description: "Successfully verified with your passkey.",
+        });
+        router.push("/dashboard");
+      } else {
+        throw new Error("No data returned from passkey verification");
+      }
     } catch (error: any) {
+      console.error("Passkey verification error:", error);
+      let userFriendlyMessage = error.message || "Could not verify passkey.";
+      
+      if (error.message?.includes("NotAllowedError") || error.message?.includes("AbortError")) {
+        userFriendlyMessage = "Verification was cancelled or timed out. Please try again.";
+      } else if (error.message?.includes("NotSupportedError")) {
+        userFriendlyMessage = "Passkey verification is not supported on this device.";
+      } else if (error.message?.includes("SecurityError")) {
+        userFriendlyMessage = "Security error occurred. Please ensure you're on a secure connection.";
+      } else if (error.message?.includes("InvalidStateError")) {
+        userFriendlyMessage = "No valid passkey found for this account.";
+      }
+      
       toast({
         title: "Verification Failed",
-        description: error.message || "Could not verify authenticator.",
+        description: userFriendlyMessage,
         variant: "destructive",
       });
     } finally {
@@ -235,7 +251,7 @@ export function Verify2FAForm({
                     onChange={(e) => setTrustDevice(e.target.checked)}
                     className="h-4 w-4"
                   />
-                  <Label htmlFor="trust-device-recovery" className="text-.tsx">
+                  <Label htmlFor="trust-device-recovery" className="text-sm">
                     Trust this device for 30 days
                   </Label>
                 </div>

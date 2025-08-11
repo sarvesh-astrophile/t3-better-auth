@@ -20,15 +20,15 @@ model Post {
 }
 
 model User {
-  id               String          @id
-  name             String
-  email            String
-  emailVerified    Boolean         @default(false)
-  image            String?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  sessions         Session[]
-  accounts         Account[]
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
 
   // Two-Factor Authentication fields
   twoFactorEnabled     Boolean               @default(false)
@@ -93,8 +93,6 @@ model Verification {
   @@map("verification")
 }
 
-
-
 // Model for storing TOTP secrets for 2FA
 
 model TwoFactorSecret {
@@ -125,17 +123,17 @@ model TwoFactorBackupCode {
 }
 
 model Passkey {
-  id           String    @id
+  id           String   @id
   name         String?
   publicKey    String
   userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   credentialID String
   counter      Int
   deviceType   String
   backedUp     Boolean
   transports   String?
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime @default(now())
   aaguid       String?
 
   @@map("passkey")

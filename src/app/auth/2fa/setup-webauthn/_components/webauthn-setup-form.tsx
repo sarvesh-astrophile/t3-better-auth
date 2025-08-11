@@ -2,297 +2,261 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Loader2, Shield, Smartphone, KeyRound } from "lucide-react";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Key,
-  Fingerprint,
-  Usb,
-  InfoIcon,
-  CheckCircle2,
-  Loader2,
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { passkey } from "@/lib/auth-client";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { authClient } from "@/lib/auth-client";
 
-export function WebAuthnSetupForm({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
-  const { toast } = useToast();
+const setupSchema = z.object({
+  name: z.string().min(1, "Passkey name is required").max(50, "Name too long"),
+});
+
+type SetupFormData = z.infer<typeof setupSchema>;
+
+interface PasskeyData {
+  id: string;
+  name: string;
+  createdAt: Date;
+}
+
+export function WebAuthnSetupForm() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [isSupported, setIsSupported] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isSupported, setIsSupported] = useState<boolean>(false);
+  const [passkeys, setPasskeys] = useState<PasskeyData[]>([]);
 
+  const form = useForm<SetupFormData>({
+    resolver: zodResolver(setupSchema),
+    defaultValues: {
+      name: "",
+    },
+  });
+
+  // Check WebAuthn support
   useEffect(() => {
-    // Check for WebAuthn support
-    const checkSupport = async () => {
-      if (typeof window !== "undefined" && window.PublicKeyCredential) {
-        try {
-          // WebAuthn is supported if PublicKeyCredential exists
-          // Platform authenticator availability is checked separately for each type
-          setIsSupported(true);
-          console.log("WebAuthn is supported on this device");
-          
-          // Check for platform authenticator availability
-          if (window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
-            const platformAvailable = await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-            console.log("Platform authenticator available:", platformAvailable);
-          }
-          
-          // Check for conditional mediation support
-          if (window.PublicKeyCredential.isConditionalMediationAvailable) {
-            const conditionalAvailable = await window.PublicKeyCredential.isConditionalMediationAvailable();
-            console.log("Conditional mediation available:", conditionalAvailable);
-          }
-        } catch (error) {
-          console.error("Error checking WebAuthn support:", error);
-          setIsSupported(!!window.PublicKeyCredential);
-        }
-      } else {
-        setIsSupported(false);
-        console.log("WebAuthn is not supported on this device");
+    const checkSupport = () => {
+      const supported = typeof window !== "undefined" && 
+        window.PublicKeyCredential !== undefined &&
+        typeof navigator.credentials !== "undefined" &&
+        typeof navigator.credentials.create === "function";
+      
+      setIsSupported(supported);
+      
+      if (supported) {
+        loadUserPasskeys();
       }
     };
-    
+
     checkSupport();
   }, []);
 
-  const handleRegister = async () => {
-    await handleRegisterWithType();
+  const loadUserPasskeys = async () => {
+    try {
+      const result = await authClient.passkey.listUserPasskeys();
+      if (result?.data) {
+        const formattedPasskeys = result.data.map(p => ({
+          id: p.id,
+          name: p.name || "Unnamed Passkey",
+          createdAt: p.createdAt
+        }));
+        setPasskeys(formattedPasskeys);
+      }
+    } catch (error) {
+      console.error("Error loading passkeys:", error);
+    }
   };
 
-  const handleRegisterWithType = async (authenticatorAttachment?: "platform" | "cross-platform") => {
-    if (!name.trim()) {
-      setError("Please provide a name for your authenticator.");
-      return;
-    }
+  const onSubmit = async (data: SetupFormData) => {
     setIsLoading(true);
-    setError(null);
-
     try {
-      // Build options object according to Better Auth passkey plugin specs
-      const options: any = {
-        name: name.trim(),
-      };
-      
-      // Only add authenticatorAttachment if specified
-      if (authenticatorAttachment) {
-        options.authenticatorAttachment = authenticatorAttachment;
-      }
-      
-      const result = await passkey.addPasskey(options);
-      
-      console.log("Passkey registration result:", result);
-      
-      toast({
-        title: "Success",
-        description: `${authenticatorAttachment === "platform" ? "Biometric" : "Security key"} registered successfully!`,
+      const result = await authClient.passkey.addPasskey({
+        name: data.name,
       });
-      
-      // Redirect to dashboard
-      router.push("/dashboard");
-    } catch (err: any) {
-      console.error("Passkey registration error:", err);
-      const errorMessage = err.message || "An unexpected error occurred.";
-      setError(errorMessage);
-      
-      // Provide more specific error messages based on Better Auth error patterns
-      let userFriendlyMessage = errorMessage;
-      if (errorMessage.includes("NotAllowedError") || errorMessage.includes("AbortError")) {
-        userFriendlyMessage = "Registration was cancelled or timed out. Please try again.";
-      } else if (errorMessage.includes("NotSupportedError")) {
-        userFriendlyMessage = "This authenticator type is not supported on your device.";
-      } else if (errorMessage.includes("InvalidStateError")) {
-        userFriendlyMessage = "This authenticator is already registered.";
-      } else if (errorMessage.includes("ConstraintError")) {
-        userFriendlyMessage = "The authenticator doesn't meet the security requirements.";
-      } else if (errorMessage.includes("SecurityError")) {
-        userFriendlyMessage = "Security error occurred. Please ensure you're on a secure connection.";
-      } else if (errorMessage.includes("NotReadableError")) {
-        userFriendlyMessage = "Authenticator is not available or cannot be used.";
+
+      if (result?.error) {
+        toast.error(result.error.message || "Failed to add passkey");
+      } else if (result?.data) {
+        toast.success("Passkey added successfully!");
+        await loadUserPasskeys();
+        form.reset();
+        
+        // Redirect to dashboard or show success
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1000);
       }
-      
-      toast({
-        title: "Registration Failed",
-        description: userFriendlyMessage,
-        variant: "destructive",
-      });
+    } catch (error) {
+      console.error("Error adding passkey:", error);
+      toast.error("Failed to add passkey. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl">Set up Security Key</CardTitle>
+  const handleDeletePasskey = async (id: string) => {
+    try {
+      const result = await authClient.passkey.deletePasskey({
+        id,
+      });
+
+      if (result?.error) {
+        toast.error(result.error.message || "Failed to delete passkey");
+      } else {
+        toast.success("Passkey deleted successfully");
+        await loadUserPasskeys();
+      }
+    } catch (error) {
+      console.error("Error deleting passkey:", error);
+      toast.error("Failed to delete passkey");
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    return new Date(date).toLocaleDateString();
+  };
+
+  if (!isSupported) {
+    return (
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Passkey Not Supported</CardTitle>
           <CardDescription>
-            Add a security key or enable biometric authentication
+            Your browser doesn't support WebAuthn or you're using an insecure context.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {isSupported ? (
-            <Alert>
-              <CheckCircle2 className="size-4" />
-              <AlertDescription>
-                Your device supports WebAuthn authentication. You can use security
-                keys, fingerprint, or face recognition.
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <Alert variant="destructive">
-              <InfoIcon className="size-4" />
-              <AlertDescription>
-                Your browser does not support WebAuthn.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="space-y-4">
-            <h3 className="font-medium">
-              Choose your authentication method
-            </h3>
-            <div className="grid gap-4">
-              <div className="border-border flex items-center space-x-4 rounded-lg border p-4">
-                <div className="bg-primary/10 text-primary flex size-12 items-center justify-center rounded-lg">
-                  <Key className="size-6" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-medium">Security Key</h4>
-                  <p className="text-muted-foreground text-sm">
-                    Use a physical security key like YubiKey
-                  </p>
-                </div>
-                <Button 
-                  variant="outline" 
-                  onClick={() => handleRegisterWithType("cross-platform")} 
-                  disabled={isLoading || !isSupported}
-                >
-                  <Usb className="mr-2 size-4" />
-                  Add Key
-                </Button>
-              </div>
-
-              <div className="border-border flex items-center space-x-4 rounded-lg border p-4">
-                <div className="bg-primary/10 text-primary flex size-12 items-center justify-center rounded-lg">
-                  <Fingerprint className="size-6" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-medium">Biometric Authentication</h4>
-                  <p className="text-muted-foreground text-sm">
-                    Use fingerprint, face, or voice recognition
-                  </p>
-                </div>
-                <Button 
-                  variant="outline" 
-                  onClick={() => handleRegisterWithType("platform")} 
-                  disabled={isLoading || !isSupported}
-                >
-                  Setup Biometric
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="font-medium">Setup Instructions</h3>
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <div className="flex gap-3">
-                <div className="bg-primary text-primary-foreground flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                  1
-                </div>
-                <p>Click "Add Key" or "Setup Biometric" above</p>
-              </div>
-              <div className="flex gap-3">
-                <div className="bg-primary text-primary-foreground flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                  2
-                </div>
-                <p>
-                  Follow the browser prompts to register your authenticator
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <div className="bg-primary text-primary-foreground flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                  3
-                </div>
-                <p>Give your authenticator a memorable name</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="grid gap-3">
-              <Label htmlFor="authenticator-name">
-                Authenticator Name
-              </Label>
-              <Input
-                id="authenticator-name"
-                type="text"
-                placeholder="My YubiKey"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-          </div>
-          
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={() => router.push("/dashboard")}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              className="flex-1"
-              onClick={handleRegister}
-              disabled={isLoading || !name || !isSupported}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Registering...
-                </>
-              ) : (
-                "Register Authenticator"
-              )}
-            </Button>
-          </div>
-
+        <CardContent>
           <Alert>
-            <InfoIcon className="size-4" />
+            <AlertTitle>Requirements</AlertTitle>
             <AlertDescription>
-              WebAuthn provides the highest level of security. Your
-              authenticator never leaves your device, making it impossible to
-              phish.
+              <ul className="list-disc list-inside space-y-1">
+                <li>HTTPS connection (required for production)</li>
+                <li>Modern browser with WebAuthn support</li>
+                <li>Secure context (localhost or HTTPS)</li>
+              </ul>
             </AlertDescription>
           </Alert>
+          <Button 
+            variant="outline" 
+            className="mt-4 w-full"
+            onClick={() => router.push("/dashboard")}
+          >
+            Continue to Dashboard
+          </Button>
         </CardContent>
       </Card>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-md space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Set up Passkey</CardTitle>
+          <CardDescription>
+            Add a passkey to your account for secure, passwordless authentication
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <Alert>
+                <Shield className="h-4 w-4" />
+                <AlertTitle>Enhanced Security</AlertTitle>
+                <AlertDescription>
+                  Passkeys use your device's built-in authenticator (Touch ID, Face ID, or Windows Hello) 
+                  for secure authentication without passwords.
+                </AlertDescription>
+              </Alert>
+
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Passkey Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g., My MacBook Touch ID"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={isLoading}
+              >
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Add Passkey
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+
+      {passkeys.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Passkeys</CardTitle>
+            <CardDescription>
+              Manage your registered passkeys
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {passkeys.map((passkey) => (
+                <div
+                  key={passkey.id}
+                  className="flex items-center justify-between p-4 border rounded-lg"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-primary/10 rounded-full">
+                      {passkey.name.toLowerCase().includes("iphone") || 
+                       passkey.name.toLowerCase().includes("android") ? (
+                        <Smartphone className="h-4 w-4" />
+                      ) : (
+                        <KeyRound className="h-4 w-4" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium">{passkey.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Added {formatDate(passkey.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeletePasskey(passkey.id)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

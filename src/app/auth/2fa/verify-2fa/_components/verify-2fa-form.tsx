@@ -97,17 +97,14 @@ export function Verify2FAForm({
     e.preventDefault();
     setIsLoading(true);
     try {
-      // Use passkey sign-in for 2FA verification
-      const result = await signIn.passkey();
+      // Use signIn.passkey for 2FA verification
+      const result = await signIn.passkey({
+        autoFill: false,
+      });
       
-      if (result?.data) {
-        toast({
-          title: "Success",
-          description: "Successfully verified with your passkey.",
-        });
-        router.push("/dashboard");
-      } else {
-        throw new Error("No data returned from passkey verification");
+      // The signIn.passkey will handle the redirect if successful
+      if (result?.error) {
+        throw new Error(result.error.message || "Passkey verification failed");
       }
     } catch (error: any) {
       console.error("Passkey verification error:", error);
@@ -119,8 +116,10 @@ export function Verify2FAForm({
         userFriendlyMessage = "Passkey verification is not supported on this device.";
       } else if (error.message?.includes("SecurityError")) {
         userFriendlyMessage = "Security error occurred. Please ensure you're on a secure connection.";
-      } else if (error.message?.includes("InvalidStateError")) {
+      } else if (error.message?.includes("InvalidStateError") || error.message?.includes("no passkey")) {
         userFriendlyMessage = "No valid passkey found for this account.";
+      } else if (error.message?.includes("USER_NOT_FOUND")) {
+        userFriendlyMessage = "No passkey registered for this account.";
       }
       
       toast({

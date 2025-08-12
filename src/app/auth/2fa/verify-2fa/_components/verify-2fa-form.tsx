@@ -97,19 +97,23 @@ export function Verify2FAForm({
     e.preventDefault();
     setIsLoading(true);
     try {
-      // Use signIn.passkey for 2FA verification
-      const result = await signIn.passkey({
-        autoFill: false,
-      });
-      
-      // The signIn.passkey will handle the redirect if successful
-      if (result?.error) {
-        throw new Error(result.error.message || "Passkey verification failed");
-      }
+      await signIn.passkey(
+        { autoFill: false },
+        {
+          onSuccess: () => {
+            toast({ title: "Verified", description: "Passkey verified successfully." });
+            // Navigate after successful verification
+            router.push("/dashboard");
+          },
+          onError: (ctx) => {
+            throw new Error(ctx.error.message || "Passkey verification failed");
+          },
+        }
+      );
     } catch (error: any) {
       console.error("Passkey verification error:", error);
       let userFriendlyMessage = error.message || "Could not verify passkey.";
-      
+
       if (error.message?.includes("NotAllowedError") || error.message?.includes("AbortError")) {
         userFriendlyMessage = "Verification was cancelled or timed out. Please try again.";
       } else if (error.message?.includes("NotSupportedError")) {
@@ -121,7 +125,7 @@ export function Verify2FAForm({
       } else if (error.message?.includes("USER_NOT_FOUND")) {
         userFriendlyMessage = "No passkey registered for this account.";
       }
-      
+
       toast({
         title: "Verification Failed",
         description: userFriendlyMessage,

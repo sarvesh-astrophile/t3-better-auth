@@ -310,6 +310,36 @@ export const authRouter = createTRPCRouter({
       }
     }),
 
+  // OTP-based password reset (email)
+  forgotPasswordEmailOtp: publicProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        await auth.api.forgetPasswordEmailOTP({
+          body: {
+            email: input.email,
+          },
+          headers: ctx.headers,
+        });
+
+        return {
+          success: true,
+          message: "Verification code sent to your email",
+        };
+      } catch (error) {
+        console.error("Forgot password (OTP) error:", error);
+
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to send verification code",
+        });
+      }
+    }),
+
   resetPassword: publicProcedure
     .input(
       z.object({
@@ -337,6 +367,40 @@ export const authRouter = createTRPCRouter({
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Invalid or expired reset token",
+        });
+      }
+    }),
+
+  // Complete OTP-based password reset
+  resetPasswordEmailOtp: publicProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        otp: z.string().length(6),
+        newPassword: z.string().min(8),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        await auth.api.resetPasswordEmailOTP({
+          body: {
+            email: input.email,
+            otp: input.otp,
+            password: input.newPassword,
+          },
+          headers: ctx.headers,
+        });
+
+        return {
+          success: true,
+          message: "Password reset successfully",
+        };
+      } catch (error) {
+        console.error("Reset password (OTP) error:", error);
+
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid or expired code",
         });
       }
     }),

@@ -6,7 +6,7 @@
 
 This document provides a comprehensive analysis of the security posture of the T3 Better Auth application, with specific recommendations for the T3 Stack and Better Auth. Vulnerabilities are identified, categorized, and prioritized to guide remediation efforts.
 
-### Security Progress Bar: ████░░░░░░░░░░░░░░░░░░░░░░░░░ 10% (2/20)
+### Security Progress Bar: ██████░░░░░░░░░░░░░░░░░░░░░░ 20% (4/20)
 - **Critical:** 2 vulnerabilities | **High:** 5 vulnerabilities | **Medium:** 7 vulnerabilities | **Low:** 6 vulnerabilities
 
 ### Security Vulnerability Table
@@ -21,10 +21,10 @@ This document provides a comprehensive analysis of the security posture of the T
 | **SEC-006** | Information Exposure | 🔴 High | ⭕ **Pending** | `src/lib/email.ts` | OTPs and other sensitive tokens are logged to the console in development. | Remove `console.log` statements that output sensitive information, or use a more robust logging library that can be configured for different environments. |
 | **SEC-007** | Input Validation | 🔴 High | ⭕ **Pending** | `src/app/auth/signup/_components/signup-form.tsx` | Lack of server-side password strength validation. | Use a library like `zod-password` to enforce strong password policies in your Zod schemas within your tRPC routers. |
 | **SEC-008** | Rate Limiting | 🔴 High | ⭕ **Pending** | `src/server/api/routers/auth.ts` | Authentication endpoints (`signIn`, `signUp`) lack rate limiting. | Apply the same rate-limiting middleware from **SEC-003** to all authentication-related tRPC procedures. |
-| **SEC-009** | Error Handling | 🔴 High | ⭕ **Pending** | `src/server/api/routers/auth.ts` | Generic error messages could be improved to avoid leaking information about user existence. | Return consistent, generic error messages for failed login attempts, but consider more specific messages for other errors where it doesn't pose a security risk. |
+| **SEC-009** | Error Handling | 🔴 High | ✅ **Completed** | `src/server/api/routers/auth.ts` | Generic error messages implemented to avoid leaking whether a user exists (e.g., sign-in returns a consistent "Invalid email or password"). | Maintain generic errors for authentication failures and avoid revealing account existence. |
 | **SEC-010** | Session Security | 🟡 Medium | ⭕ **Pending** | `src/middleware.ts` | Permissive cookie parsing logic and non-robust JSON parsing of the user cookie. | Rely on Better Auth's session management and avoid manual cookie parsing in the middleware. Use the `auth.api.getSession` method to get session data. |
 | **SEC-011** | Security Headers | 🟡 Medium | ⭕ **Pending** | `next.config.mjs` | Missing crucial security headers like Content-Security-Policy (CSP) and Strict-Transport-Security (HSTS). | Add a `headers` function to your `next.config.mjs` file to apply these headers to all responses. |
-| **SEC-012** | Business Logic | 🟡 Medium | ⭕ **Pending** | `src/server/api/routers/auth.ts` | The `sendVerificationOTP` endpoint could be called for an already verified user. | Add a check within the tRPC procedure to see if the user's email is already verified before sending a new OTP. |
+| **SEC-012** | Business Logic | 🟡 Medium | ✅ **Completed** | `src/server/api/routers/auth.ts` | `sendVerificationOTP` prevents sending a new code when the authenticated user is already verified; server also maps "already verified" provider errors to 400. | Ensure similar checks exist on all verification-related mutations. |
 | **SEC-013** | IDOR | 🟡 Medium | ⭕ **Pending** | `src/app/auth/verify-otp/_components/verify-otp-form.tsx` | The verification form takes an email from a URL parameter, which could be manipulated. | The backend should always use the session's email for verification, not the one from the URL. The URL parameter should only be for display purposes. |
 | **SEC-014** | Session Timeout | 🟡 Medium | ⭕ **Pending** | `src/lib/auth.ts` | No explicit idle or absolute session timeout enforced on the server-side. | Configure session and cookie expiration in Better Auth to enforce reasonable session lifetimes. |
 | **SEC-015** | HTTPS Enforcement | 🟢 Low | ⭕ **Pending** | `src/middleware.ts` | No explicit redirection from HTTP to HTTPS in production. | While your hosting provider likely handles this, it's good practice to add a check in your middleware to redirect HTTP to HTTPS. |
@@ -52,13 +52,13 @@ This is a prioritized list of actions to address the identified vulnerabilities.
 
 -   [ ] **(SEC-006)** Remove sensitive data logging in development.
 -   [ ] **(SEC-007)** Enforce server-side password strength validation.
--   [ ] **(SEC-009)** Refine error handling to prevent information leakage.
+-   [x] **(SEC-009)** Refine error handling to prevent information leakage. (Generic error messaging implemented in `src/server/api/routers/auth.ts`)
 
 ### Phase 3: Medium & Low-Priority Hardening
 
 -   [ ] **(SEC-010)** Strengthen cookie parsing logic in middleware.
 -   [ ] **(SEC-011, SEC-016)** Add comprehensive security headers (CSP, HSTS, X-Frame-Options).
--   [ ] **(SEC-012)** Add server-side check to prevent re-verification of already verified emails.
+-   [x] **(SEC-012)** Add server-side check to prevent re-verification of already verified emails. (Guard present in `authRouter.sendVerificationOTP`)
 -   [ ] **(SEC-013)** Review and harden logic around URL-passed parameters.
 -   [ ] **(SEC-014)** Implement server-side session timeout policies.
 -   [ ] **(SEC-015)** Enforce HTTPS in production.
@@ -70,5 +70,5 @@ This is a prioritized list of actions to address the identified vulnerabilities.
 
 **Security Contact:** For security vulnerabilities, please create a security advisory rather than a public issue.
 
-**Last Security Review:** $(date)
-**Next Security Review:** $(date + 7 days) 
+**Last Security Review:** 2025-08-12
+**Next Security Review:** 2025-08-19 

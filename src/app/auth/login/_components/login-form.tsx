@@ -34,7 +34,8 @@ export function LoginForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
-  const [supportsPasskey, setSupportsPasskey] = useState(false);
+  const [supportsWebAuthn, setSupportsWebAuthn] = useState(false);
+  const [supportsConditionalUI, setSupportsConditionalUI] = useState(false);
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -44,33 +45,43 @@ export function LoginForm() {
     },
   });
 
-  // Check for passkey support and enable conditional UI
+  // Check for WebAuthn support and enable conditional UI if available
   useEffect(() => {
-    const checkPasskeySupport = async () => {
-      if (
-        typeof window !== "undefined" &&
-        window.PublicKeyCredential &&
-        typeof window.PublicKeyCredential.isConditionalMediationAvailable === "function"
-      ) {
+    let isMounted = true;
+
+    const init = async () => {
+      if (typeof window === "undefined") return;
+
+      const hasWebAuthn = typeof window.PublicKeyCredential !== "undefined";
+      if (isMounted) setSupportsWebAuthn(hasWebAuthn);
+
+      const canCheckConditional =
+        hasWebAuthn && typeof window.PublicKeyCredential.isConditionalMediationAvailable === "function";
+
+      if (canCheckConditional) {
         try {
           const available = await window.PublicKeyCredential.isConditionalMediationAvailable();
-          setSupportsPasskey(available);
+          if (isMounted) setSupportsConditionalUI(!!available);
+
+          if (available) {
+            // Initialize conditional UI; ensure promise is handled
+            void authClient.signIn
+              .passkey({ autoFill: true })
+              .catch((error: unknown) => {
+                console.warn("Conditional UI init failed:", error);
+              });
+          }
         } catch (error) {
-          console.warn("Error checking passkey support:", error);
+          console.warn("Error checking conditional mediation support:", error);
         }
       }
     };
 
-    checkPasskeySupport();
+    void init();
 
-    // Enable conditional UI for passkeys
-    if (typeof window !== "undefined") {
-      try {
-        authClient.signIn.passkey({ autoFill: true });
-      } catch (error) {
-        console.warn("Error initializing conditional UI:", error);
-      }
-    }
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const onSubmit = async (data: LoginFormData) => {
@@ -97,25 +108,49 @@ export function LoginForm() {
   const handlePasskeySignIn = async () => {
     setIsPasskeyLoading(true);
     try {
-      const result = await authClient.signIn.passkey({
-        email: form.getValues("email") || undefined,
-      });
-
-      if (result?.error) {
-        const error = result.error;
-        if (error.message?.includes("User not found")) {
-          toast.error("No account found. Please sign up first.");
-          router.push("/auth/signup");
-        } else {
-          toast.error(error.message || "Passkey authentication failed");
+      const result = await authClient.signIn.passkey(
+        {
+          email: form.getValues("email") || undefined,
+          autoFill: false,
+        },
+        {
+          onSuccess: () => {
+            toast.success("Successfully logged in with passkey!");
+            router.push("/dashboard");
+            router.refresh();
+          },
+          onError: (ctx) => {
+            const message = ctx?.error?.message || "Passkey authentication failed";
+            if (message.includes("User not found")) {
+              toast.error("No account found. Please sign up first.");
+              router.push("/auth/signup");
+            } else if (
+              message.includes("NotAllowedError") ||
+              message.includes("AbortError")
+            ) {
+              toast.error("Request was cancelled or timed out. Please try again.");
+            } else if (message.includes("SecurityError")) {
+              toast.error("Security error. Ensure you're on a secure origin that matches RP ID.");
+            } else if (
+              message.includes("InvalidStateError") ||
+              message.toLowerCase().includes("no passkey")
+            ) {
+              toast.error("No valid passkey found for this account.");
+            } else {
+              toast.error(message);
+            }
+          },
         }
-      } else if (result?.data) {
-        toast.success("Successfully logged in with passkey!");
-        router.push("/dashboard");
-        router.refresh();
+      );
+
+      // Fallback handling if callbacks didn't run
+      if (result?.error) {
+        const message = result.error.message || "Passkey authentication failed";
+        toast.error(message);
       }
-    } catch (error) {
-      toast.error("Passkey authentication failed");
+    } catch (error: any) {
+      const message: string = error?.message || "Passkey authentication failed";
+      toast.error(message);
     } finally {
       setIsPasskeyLoading(false);
     }
@@ -194,7 +229,7 @@ export function LoginForm() {
           </form>
         </Form>
 
-        {supportsPasskey && (
+        {supportsWebAuthn && (
           <>
             <Separator />
             <div className="space-y-2">
@@ -212,6 +247,11 @@ export function LoginForm() {
                 )}
                 Sign in with Passkey
               </Button>
+              {!supportsConditionalUI && (
+                <p className="text-xs text-muted-foreground">
+                  Your browser does not support passkey autofill. Click the button above to use your passkey.
+                </p>
+              )}
             </div>
           </>
         )}

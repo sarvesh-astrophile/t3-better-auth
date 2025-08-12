@@ -6,13 +6,15 @@ export const env = createEnv({
 	 * Specify your server-side environment variables schema here. This way you can ensure the app
 	 * isn't built with invalid env vars.
 	 */
-	server: {
+		server: {
 		DATABASE_URL: z.string().url(),
 		NODE_ENV: z
 			.enum(["development", "test", "production"])
 			.default("development"),
 		AUTH_SECRET: z.string().min(1),
 		BETTER_AUTH_URL: z.string().url().optional(),
+			// Passkey/WebAuthn relying party ID (domain without scheme)
+			RP_ID: z.string().min(1),
 		GOOGLE_CLIENT_ID: z.string().optional(),
 		GOOGLE_CLIENT_SECRET: z.string().optional(),
 		// Email configuration
@@ -42,6 +44,7 @@ export const env = createEnv({
 		NODE_ENV: process.env.NODE_ENV,
 		AUTH_SECRET: process.env.AUTH_SECRET,
 		BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+			RP_ID: process.env.RP_ID,
 		GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
 		GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
 		NEXT_PUBLIC_BETTER_AUTH_URL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL,

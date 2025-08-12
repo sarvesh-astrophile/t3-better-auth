@@ -44,7 +44,7 @@ passkey({
 1. Navigate to `/auth/2fa/setup-webauthn`
 2. Check browser console for support messages
 3. Try registering with both platform and cross-platform authenticators
-4. Verify passkey appears in `/auth/2fa/manage-authenticators`
+4. Verify passkey appears in `/auth/2fa/setup-webauthn`
 
 ### 3. Test WebAuthn Sign-in
 1. Navigate to `/auth/login`

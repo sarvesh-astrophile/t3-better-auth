@@ -167,12 +167,7 @@ export default async function DashboardPage() {
                   Add Passkey / Security Key
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/auth/2fa/manage-authenticators">
-                  <Key className="mr-2 size-4" />
-                  Manage Passkeys
-                </Link>
-              </Button>
+              {/* Consolidated passkey management to setup-webauthn */}
               <Button asChild variant="outline" className="w-full">
                 <Link href="/">
                   <Calendar className="mr-2 size-4" />

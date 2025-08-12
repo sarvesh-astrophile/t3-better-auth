@@ -67,34 +67,54 @@ export function WebAuthnSetupForm() {
 
   const loadUserPasskeys = async () => {
     try {
-      const result = await authClient.passkey.listUserPasskeys();
-      if (result?.data) {
-        const formattedPasskeys = result.data.map(p => ({
-          id: p.id,
-          name: p.name || "Unnamed Passkey",
-          createdAt: p.createdAt
-        }));
-        setPasskeys(formattedPasskeys);
+      const response = await authClient.passkey.listUserPasskeys();
+
+      // Normalize various possible response shapes
+      let passkeyList: any[] = [];
+      if (response && Array.isArray((response as any).data)) {
+        passkeyList = (response as any).data;
+      } else if (Array.isArray(response)) {
+        passkeyList = response as any[];
+      } else if (response && typeof response === "object") {
+        const candidates = ["passkeys", "items", "results"] as const;
+        for (const key of candidates) {
+          const maybe = (response as any)[key];
+          if (Array.isArray(maybe)) {
+            passkeyList = maybe;
+            break;
+          }
+        }
       }
+
+      const formattedPasskeys = passkeyList.map((p) => ({
+        id: p.id,
+        name: p.name || "Unnamed Passkey",
+        createdAt: p.createdAt,
+      }));
+      setPasskeys(formattedPasskeys);
     } catch (error) {
       console.error("Error loading passkeys:", error);
+      toast.error("Failed to load passkeys");
     }
   };
 
   const onSubmit = async (data: SetupFormData) => {
     setIsLoading(true);
     try {
-      const result = await authClient.passkey.addPasskey({
+      const result: any = await authClient.passkey.addPasskey({
         name: data.name,
       });
 
-      if (result?.error) {
-        toast.error(result.error.message || "Failed to add passkey");
-      } else if (result?.data) {
+      const hasError = result && typeof result === "object" && "error" in result && (result as any).error;
+      if (hasError) {
+        const message = (result as any).error?.message || "Failed to add passkey";
+        toast.error(message);
+      } else {
         toast.success("Passkey added successfully!");
         await loadUserPasskeys();
         form.reset();
-        
+        router.refresh();
+
         // Redirect to dashboard or show success
         setTimeout(() => {
           router.push("/dashboard");
@@ -110,15 +130,18 @@ export function WebAuthnSetupForm() {
 
   const handleDeletePasskey = async (id: string) => {
     try {
-      const result = await authClient.passkey.deletePasskey({
+      const result: any = await authClient.passkey.deletePasskey({
         id,
       });
 
-      if (result?.error) {
-        toast.error(result.error.message || "Failed to delete passkey");
+      const hasError = result && typeof result === "object" && "error" in result && (result as any).error;
+      if (hasError) {
+        const message = (result as any).error?.message || "Failed to delete passkey";
+        toast.error(message);
       } else {
         toast.success("Passkey deleted successfully");
         await loadUserPasskeys();
+        router.refresh();
       }
     } catch (error) {
       console.error("Error deleting passkey:", error);

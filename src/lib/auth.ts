@@ -48,10 +48,8 @@ export const auth = betterAuth({
     }),
     passkey({
       rpName: "Better Auth T3",
-      rpID: process.env.NODE_ENV === "production"
-        ? new URL(env.BETTER_AUTH_URL || "https://localhost:3000").hostname
-        : "bristol-frankfurt-toolkit-shock.trycloudflare.com",
-      origin: (env.BETTER_AUTH_URL || "https://bristol-frankfurt-toolkit-shock.trycloudflare.com").replace(/\/$/, ""),
+      rpID: env.RP_ID!,
+      origin: (env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, ""),
       authenticatorSelection: {
         authenticatorAttachment: undefined, // Allow both platform and cross-platform
         userVerification: "preferred",

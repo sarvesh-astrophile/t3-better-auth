@@ -14,6 +14,7 @@ import SuperJSON from "superjson";
 
 import type { AppRouter } from "@/server/api/root";
 import { createQueryClient } from "./query-client";
+import { env } from "@/env";
 
 let clientQueryClientSingleton: QueryClient | undefined = undefined;
 const getQueryClient = () => {
@@ -110,6 +111,6 @@ export function TRPCReactProvider(props: {
 
 function getBaseUrl() {
 	if (typeof window !== "undefined") return window.location.origin;
-	if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL;
+	if (env.BETTER_AUTH_URL) return env.BETTER_AUTH_URL;
 	return `http://localhost:${process.env.PORT ?? 3000}`;
 }

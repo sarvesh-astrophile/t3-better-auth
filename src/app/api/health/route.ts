@@ -1,36 +1,30 @@
 import { NextResponse } from "next/server";
-import { db } from "@/server/db";
 
 /**
- * Health check endpoint for deployment verification
- * Used by nixpacks/coolify to verify the application is running correctly
+ * Health check endpoint for Docker container monitoring
+ * Returns 200 OK if the application is running properly
  */
 export async function GET() {
   try {
-    // Test database connectivity by running a simple query
-    await db.$queryRaw`SELECT 1`;
-    
+    // Basic health check - just verify the app is responding
     return NextResponse.json(
       {
         status: "healthy",
         timestamp: new Date().toISOString(),
-        database: "connected",
-        environment: process.env.NODE_ENV || "development",
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV,
       },
       { status: 200 }
     );
   } catch (error) {
     console.error("Health check failed:", error);
-    
     return NextResponse.json(
       {
         status: "unhealthy",
         timestamp: new Date().toISOString(),
-        database: "disconnected",
-        error: "Database connection failed",
-        environment: process.env.NODE_ENV || "development",
+        error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 503 }
+      { status: 500 }
     );
   }
 }

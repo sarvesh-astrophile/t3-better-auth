@@ -36,8 +36,8 @@ RUN bun run build
 FROM oven/bun:1 AS runner
 WORKDIR /app
 
-# Install OpenSSL for Prisma runtime
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# Install OpenSSL for Prisma runtime and curl for health checks
+RUN apt-get update -y && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
 
 # Set environment variables
 ENV NODE_ENV=production
@@ -53,6 +53,14 @@ COPY --from=builder /app/node_modules ./node_modules
 
 # Copy startup script
 COPY --from=builder /app/docker-entrypoint.sh ./
+
+# Create a health check script
+RUN echo '#!/bin/bash\ncurl -f http://localhost:3000/api/health || exit 1' > /app/health-check.sh && \
+    chmod +x /app/health-check.sh
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD /app/health-check.sh
 
 # Expose port
 EXPOSE 3000

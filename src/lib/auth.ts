@@ -67,7 +67,7 @@ export const auth = betterAuth({
     passkey({
       rpName: "Better Auth T3",
       rpID: env.RP_ID!,
-      origin: (env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, ""),
+      origin: env.BETTER_AUTH_URL!.replace(/\/$/, ""),
       authenticatorSelection: {
         authenticatorAttachment: undefined, // Allow both platform and cross-platform
         userVerification: "preferred",
@@ -107,11 +107,10 @@ export const auth = betterAuth({
   },
   trustedOrigins: [
     "http://localhost:3000",
-    "https://bristol-frankfurt-toolkit-shock.trycloudflare.com",
-    "http://bristol-frankfurt-toolkit-shock.trycloudflare.com",
+    env.BETTER_AUTH_URL!,
   ],
   secret: env.BETTER_AUTH_SECRET || env.AUTH_SECRET,
-  baseURL: env.BETTER_AUTH_URL || "http://localhost:3000",
+  baseURL: env.BETTER_AUTH_URL,
   logger: {
     level: env.NODE_ENV === "development" ? "debug" : "error",
   },

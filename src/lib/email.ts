@@ -18,11 +18,11 @@ export const createEmailTransporter = () => {
   }
 
   return nodemailer.createTransport({
-    host: env.SMTP_HOST || "localhost",
-    port: parseInt(env.SMTP_PORT || "465"),
+    host: env.SMTP_HOST,
+    port: parseInt(env.SMTP_PORT!),
     secure: env.SMTP_PORT !== "587", // Use SSL/TLS for port 465, STARTTLS for 587
     auth: env.SMTP_USERNAME && env.SMTP_PASSWORD ? {
-      user: env.SMTP_USERNAME || "plunk",
+      user: env.SMTP_USERNAME,
       pass: env.SMTP_PASSWORD,
     } : undefined,
   });
@@ -66,7 +66,7 @@ export const sendOTPEmail = async ({
   otp: string;
   type: 'email-verification' | 'sign-in' | 'forget-password' | 'two-factor';
 }) => {
-  const host = env.BETTER_AUTH_URL ? new URL(env.BETTER_AUTH_URL).host : 'localhost:3000';
+  const host = new URL(env.BETTER_AUTH_URL!).host;
   
   // In development, just log OTP to console and return success
   if (isDevelopment) {

@@ -92,11 +92,9 @@ After setting the environment variables, your logs should show:
  ✓ Ready in 1497ms
 ```
 
-### 7. Health Check
 
-The container now includes a health check endpoint at `/api/health` that Coolify can use to monitor your application.
 
-### 8. Troubleshooting
+### 7. Troubleshooting
 
 If the container still restarts:
 
@@ -105,7 +103,7 @@ If the container still restarts:
 3. **Check AUTH_SECRET** - Should be a long, secure string
 4. **Database issues** - Ensure DATABASE_URL is correct if using external DB
 
-### 9. Production Security Notes
+### 8. Production Security Notes
 
 - **Never commit** your actual `AUTH_SECRET` to version control
 - **Use strong secrets** - minimum 32 characters

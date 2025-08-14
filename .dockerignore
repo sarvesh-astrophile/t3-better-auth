@@ -9,10 +9,11 @@ yarn-error.log*
 out/
 dist/
 
-# Environment variables
+# Environment variables (Coolify will inject these at runtime)
 .env
 .env.*
 !.env.example
+!.env.production
 
 # Logs
 *.log
@@ -67,9 +68,10 @@ Thumbs.db
 .git
 .gitignore
 
-# Docker
+# Docker (but keep our entrypoint script)
 Dockerfile*
 docker-compose*
+!docker-entrypoint.sh
 
 # Documentation and development files
 README.md
@@ -81,9 +83,10 @@ backup-codes.txt
 security-task.md
 tasks.md
 
-# Development database
+# Development database (but keep schema.prisma and migrations)
 prisma/dev.db
 prisma/dev.db-journal
+prisma/db.sqlite
 
 # TypeScript build info
 *.tsbuildinfo

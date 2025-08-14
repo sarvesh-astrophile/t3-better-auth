@@ -2,29 +2,41 @@
 FROM oven/bun:1 AS dependencies
 WORKDIR /app
 
-# Copy package files for better caching
+# Install OpenSSL for Prisma
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
+# Copy package files and Prisma schema for better caching
 COPY package.json bun.lock ./
+COPY prisma ./prisma
 RUN bun install --frozen-lockfile
 
 # Build stage
 FROM oven/bun:1 AS builder
 WORKDIR /app
 
+# Install OpenSSL for Prisma
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
 # Copy dependencies from previous stage
 COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=dependencies /app/prisma ./prisma
 COPY package.json bun.lock ./
 
 # Copy source code
 COPY . .
 
-# Generate Prisma client and build
-RUN bun run postinstall && \
-    bun run db:migrate && \
-    bun run build
+# Make startup script executable
+RUN chmod +x docker-entrypoint.sh
+
+# Build the application (skip migrations - will run at runtime)
+RUN bun run build
 
 # Production stage
 FROM oven/bun:1 AS runner
 WORKDIR /app
+
+# Install OpenSSL for Prisma runtime
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 # Set environment variables
 ENV NODE_ENV=production
@@ -38,8 +50,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules ./node_modules
 
+# Copy startup script
+COPY --from=builder /app/docker-entrypoint.sh ./
+
 # Expose port
 EXPOSE 3000
 
-# Start the application
+# Use startup script as entrypoint
+ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["bun", "run", "start"]

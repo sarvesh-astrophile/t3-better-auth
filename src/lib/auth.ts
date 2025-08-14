@@ -110,7 +110,7 @@ export const auth = betterAuth({
     "https://bristol-frankfurt-toolkit-shock.trycloudflare.com",
     "http://bristol-frankfurt-toolkit-shock.trycloudflare.com",
   ],
-  secret: env.AUTH_SECRET,
+  secret: env.BETTER_AUTH_SECRET || env.AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL || "http://localhost:3000",
   logger: {
     level: env.NODE_ENV === "development" ? "debug" : "error",

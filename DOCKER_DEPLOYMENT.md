@@ -9,8 +9,8 @@ Your container is restarting because **required environment variables are missin
 Set these in your Coolify environment variables:
 
 ```bash
-# Required - Authentication secret
-AUTH_SECRET=your-super-secret-auth-key-change-this-in-production
+# Required - Better Auth secret (preferred) or AUTH_SECRET
+BETTER_AUTH_SECRET=your-super-secret-auth-key-change-this-in-production
 
 # Required - WebAuthn Relying Party ID (your domain)
 RP_ID=yourdomain.com
@@ -19,7 +19,7 @@ RP_ID=yourdomain.com
 DATABASE_URL=file:./dev.db
 ```
 
-### 2. Generate AUTH_SECRET
+### 2. Generate BETTER_AUTH_SECRET
 
 Run one of these commands to generate a secure auth secret:
 

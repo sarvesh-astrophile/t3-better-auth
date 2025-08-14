@@ -6,7 +6,7 @@ echo "🚀 Starting application initialization..."
 # Check for required environment variables
 echo "🔍 Checking required environment variables..."
 
-required_vars=("AUTH_SECRET" "RP_ID")
+required_vars=("RP_ID")
 missing_vars=()
 
 for var in "${required_vars[@]}"; do
@@ -15,6 +15,11 @@ for var in "${required_vars[@]}"; do
     fi
 done
 
+# Check for either BETTER_AUTH_SECRET or AUTH_SECRET
+if [ -z "$BETTER_AUTH_SECRET" ] && [ -z "$AUTH_SECRET" ]; then
+    missing_vars+=("BETTER_AUTH_SECRET or AUTH_SECRET")
+fi
+
 if [ ${#missing_vars[@]} -ne 0 ]; then
     echo "❌ Missing required environment variables:"
     for var in "${missing_vars[@]}"; do
@@ -22,7 +27,7 @@ if [ ${#missing_vars[@]} -ne 0 ]; then
     done
     echo ""
     echo "💡 Set these in your Coolify environment variables:"
-    echo "   AUTH_SECRET=your-secret-key-here"
+    echo "   BETTER_AUTH_SECRET=your-secret-key-here (or AUTH_SECRET)"
     echo "   RP_ID=your-domain.com"
     echo ""
     echo "🔄 Container will restart until these are set..."

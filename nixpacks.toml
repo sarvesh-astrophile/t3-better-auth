@@ -1,44 +1,20 @@
 # Nixpacks configuration for T3 Better Auth App
-# This configuration uses bun for package management and deployment
-
-# Use Node.js provider with bun
 providers = ["node"]
 
 [variables]
-# Set NODE_ENV to production for optimal performance
 NODE_ENV = "production"
-# Disable Next.js telemetry in production
 NEXT_TELEMETRY_DISABLED = "1"
-# Use bun as package manager
 NIXPACKS_NODE_PACKAGE_MANAGER = "bun"
-# Prisma configuration
 DATABASE_URL = "file:./prisma/dev.db"
-# Better Auth configuration (add your actual values via Coolify environment variables)
-BETTER_AUTH_SECRET = "your-secret-key-here"
-BETTER_AUTH_URL = "http://localhost:3000"
-# Port configuration for deployment
 PORT = "3000"
 
-[phases.setup]
-# Install system dependencies if needed
-aptPkgs = ["curl", "ca-certificates"]
-
-[phases.install]
-# Nixpacks will automatically run 'bun install' when NIXPACKS_NODE_PACKAGE_MANAGER is set to bun
-# We just need to run postinstall to generate Prisma client
-cmds = ["bun run postinstall"]
-
 [phases.build]
-# Database setup and application build
 cmds = [
     "mkdir -p prisma",
-    "bun run db:migrate",
+    "bun run postinstall",
+    "bun run db:migrate", 
     "bun run build"
 ]
 
 [phases.start]
-# Start the production server
 cmd = "bun run start"
-
-# The start phase will expose port 3000
-# Health check endpoint is available at /api/health

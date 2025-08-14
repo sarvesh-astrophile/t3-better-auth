@@ -30,6 +30,19 @@ RUN chmod +x docker-entrypoint.sh
 
 # Build the application (skip env validation and migrations - will run at runtime)
 ENV SKIP_ENV_VALIDATION=true
+
+# Provide minimal required environment variables for build-time execution
+# These are needed because Next.js attempts to collect page data during build,
+# which imports the auth configuration that references these environment variables
+ENV BETTER_AUTH_URL=https://better-auth.sarvsh.in
+ENV RP_ID=better-auth.sarvsh.in
+ENV AUTH_SECRET=dummy-build-secret-for-build-only
+ENV DATABASE_URL=file:./dev.db
+
+# Optional environment variables (to prevent potential undefined errors)
+ENV GOOGLE_CLIENT_ID=""
+ENV GOOGLE_CLIENT_SECRET=""
+
 RUN bun run build
 
 # Production stage

@@ -11,4 +11,10 @@ echo "✅ Database migrations completed"
 
 # Start the application
 echo "🌟 Starting Next.js application..."
-exec "$@"
+
+# If no arguments provided or invalid arguments, default to starting the app
+if [ $# -eq 0 ] || [[ "$1" == "--"* ]]; then
+    exec bun run start
+else
+    exec "$@"
+fi

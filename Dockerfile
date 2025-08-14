@@ -28,7 +28,8 @@ COPY . .
 # Make startup script executable
 RUN chmod +x docker-entrypoint.sh
 
-# Build the application (skip migrations - will run at runtime)
+# Build the application (skip env validation and migrations - will run at runtime)
+ENV SKIP_ENV_VALIDATION=true
 RUN bun run build
 
 # Production stage

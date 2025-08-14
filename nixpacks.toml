@@ -1,0 +1,74 @@
+# Nixpacks configuration for T3 Better Auth App
+# This configuration uses bun for package management and deployment
+
+[variables]
+# Set NODE_ENV to production for optimal performance
+NODE_ENV = "production"
+# Disable Next.js telemetry in production
+NEXT_TELEMETRY_DISABLED = "1"
+# Prisma configuration
+DATABASE_URL = "file:./prisma/dev.db"
+# Better Auth configuration (add your actual values via Coolify environment variables)
+BETTER_AUTH_SECRET = "your-secret-key-here"
+BETTER_AUTH_URL = "http://localhost:3000"
+# Port configuration for deployment
+PORT = "3000"
+
+[providers]
+# Use bun as the primary provider for faster installs and builds
+bun = "1.1.38"
+
+[phases.setup]
+# Install system dependencies if needed
+aptPkgs = ["curl", "ca-certificates"]
+
+[phases.install]
+# Use bun for dependency installation
+cmds = [
+    "bun install --frozen-lockfile",
+    "bun run postinstall"  # This runs prisma generate
+]
+
+[phases.build]
+# Database setup and application build
+cmds = [
+    # Ensure the prisma directory exists and has proper permissions
+    "mkdir -p prisma",
+    # Generate Prisma client (in case postinstall didn't run)
+    "bunx prisma generate",
+    # Run database migrations to set up the database schema
+    "bunx prisma migrate deploy",
+    # Build the Next.js application
+    "bun run build"
+]
+
+[phases.start]
+# Start the production server
+cmd = "bun run start"
+
+[deploy]
+# Deployment configuration
+onlyIncludeFiles = [
+    ".next",
+    "public",
+    "prisma/schema.prisma",
+    "prisma/migrations",
+    "package.json",
+    "bun.lockb",
+    "next.config.js",
+    "postcss.config.js",
+    "tsconfig.json"
+]
+
+# Health check configuration
+[deploy.healthcheck]
+path = "/api/health"
+port = 3000
+
+# Port configuration
+[deploy.ports]
+"3000" = "3000"
+
+# Static file serving
+[deploy.staticFiles]
+"/public" = "public"

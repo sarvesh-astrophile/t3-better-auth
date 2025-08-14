@@ -63,6 +63,48 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
 	},
 });
 
+// Simple in-memory sliding window rate limiter for tRPC procedures
+type RateLimitRule = { limit: number; windowMs: number };
+const rateLimitStore: Map<string, { count: number; resetAt: number }> = new Map();
+
+function getClientIp(headers: Headers): string {
+  const fwd = headers.get("x-forwarded-for") || headers.get("cf-connecting-ip") || headers.get("x-real-ip");
+  if (!fwd) return "unknown";
+  // x-forwarded-for may be a list
+  return fwd.split(",")[0]!.trim();
+}
+
+function makeKey({ headers }: { headers: Headers }, identifier: string) {
+  const ip = getClientIp(headers);
+  return `${identifier}:${ip}`;
+}
+
+async function applyRateLimit(key: string, rule: RateLimitRule) {
+  const now = Date.now();
+  const entry = rateLimitStore.get(key);
+  if (!entry || now > entry.resetAt) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + rule.windowMs });
+    return;
+  }
+  if (entry.count >= rule.limit) {
+    const retryAfterSec = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
+    const error: any = new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many requests. Please try again later." });
+    (error.meta ??= {}).retryAfter = retryAfterSec;
+    throw error;
+  }
+  entry.count += 1;
+}
+
+/**
+ * Rate limit middleware factory
+ */
+export const createRateLimitMiddleware = (identifier: string, rule: RateLimitRule) =>
+  t.middleware(async ({ ctx, next }) => {
+    const key = makeKey(ctx, identifier);
+    await applyRateLimit(key, rule);
+    return next();
+  });
+
 /**
  * Create a server-side caller.
  *

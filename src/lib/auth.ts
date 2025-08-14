@@ -12,6 +12,24 @@ export const auth = betterAuth({
   database: prismaAdapter(db, {
     provider: "sqlite",
   }),
+  // Built-in Better Auth rate limiting. Note: this applies to client hits on /api/auth/*.
+  // Our server-side tRPC calls via auth.api are exempt, so we also add a tRPC middleware below.
+  rateLimit: {
+    enabled: true,
+    // default window and max for non-sensitive endpoints
+    window: 60, // seconds
+    max: 100,
+    // tighter limits for sensitive routes
+    customRules: {
+      "/email-otp/send-verification-otp": { window: 60, max: 3 },
+      "/email-otp/verify-email": { window: 30, max: 5 },
+      "/forget-password/email-otp": { window: 60, max: 3 },
+      "/email-otp/reset-password": { window: 60, max: 5 },
+      "/two-factor/*": async () => ({ window: 30, max: 5 }),
+      "/sign-in/email": { window: 10, max: 3 },
+    },
+    // storage: "memory" // default; can be switched to "database" when needed
+  },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false, // Allow unverified users to login but restrict access via middleware
@@ -111,8 +129,14 @@ export const auth = betterAuth({
     
     // Force secure cookies (useful for production)
     useSecureCookies: env.NODE_ENV === "production",
-    
-
+    // Ensure correct client IP detection for rate limiting behind proxies/CDNs
+    ipAddress: {
+      ipAddressHeaders: [
+        "cf-connecting-ip",
+        "x-forwarded-for",
+        "x-real-ip",
+      ],
+    },
   },
 });
 

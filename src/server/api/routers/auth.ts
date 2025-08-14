@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
-import { createTRPCRouter, publicProcedure, protectedProcedure, verifiedProcedure } from "@/server/api/trpc";
+import { createTRPCRouter, publicProcedure, protectedProcedure, verifiedProcedure, createRateLimitMiddleware } from "@/server/api/trpc";
 import { auth } from "@/lib/auth";
 
 export const authRouter = createTRPCRouter({
@@ -33,6 +33,11 @@ export const authRouter = createTRPCRouter({
     )
     .mutation(async ({ input, ctx }) => {
       try {
+        // Clear any existing session to ensure session ID rotation on new account creation
+        try {
+          await auth.api.signOut({ headers: ctx.headers });
+        } catch (_) {}
+
         const result = await auth.api.signUpEmail({
           body: {
             email: input.email,
@@ -75,6 +80,11 @@ export const authRouter = createTRPCRouter({
     )
     .mutation(async ({ input, ctx }) => {
       try {
+        // Revoke any existing session to prevent session fixation before login
+        try {
+          await auth.api.signOut({ headers: ctx.headers });
+        } catch (_) {}
+
         const result = await auth.api.signInEmail({
           body: {
             email: input.email,
@@ -118,6 +128,7 @@ export const authRouter = createTRPCRouter({
   }),
 
   sendVerificationOTP: publicProcedure
+    .use(createRateLimitMiddleware("sendVerificationOTP", { windowMs: 60_000, limit: 3 }))
     .input(
       z.object({
         email: z.string().email(),
@@ -167,6 +178,7 @@ export const authRouter = createTRPCRouter({
     }),
 
   verifyEmailOTP: publicProcedure
+    .use(createRateLimitMiddleware("verifyEmailOTP", { windowMs: 30_000, limit: 5 }))
     .input(
       z.object({
         email: z.string().email(),
@@ -312,6 +324,7 @@ export const authRouter = createTRPCRouter({
 
   // OTP-based password reset (email)
   forgotPasswordEmailOtp: publicProcedure
+    .use(createRateLimitMiddleware("forgotPasswordEmailOtp", { windowMs: 60_000, limit: 3 }))
     .input(
       z.object({
         email: z.string().email(),
@@ -373,6 +386,7 @@ export const authRouter = createTRPCRouter({
 
   // Complete OTP-based password reset
   resetPasswordEmailOtp: publicProcedure
+    .use(createRateLimitMiddleware("resetPasswordEmailOtp", { windowMs: 60_000, limit: 5 }))
     .input(
       z.object({
         email: z.string().email(),
@@ -497,6 +511,7 @@ export const authRouter = createTRPCRouter({
     }),
 
   verifyTotp: publicProcedure
+    .use(createRateLimitMiddleware("verifyTotp", { windowMs: 30_000, limit: 5 }))
     .input(
       z.object({
         code: z.string().length(6),
@@ -528,6 +543,7 @@ export const authRouter = createTRPCRouter({
     }),
 
   sendTwoFactorOtp: protectedProcedure
+    .use(createRateLimitMiddleware("sendTwoFactorOtp", { windowMs: 60_000, limit: 3 }))
     .input(
       z.object({
         trustDevice: z.boolean().optional().default(false),
@@ -557,6 +573,7 @@ export const authRouter = createTRPCRouter({
     }),
 
   verifyTwoFactorOtp: publicProcedure
+    .use(createRateLimitMiddleware("verifyTwoFactorOtp", { windowMs: 30_000, limit: 5 }))
     .input(
       z.object({
         code: z.string(),

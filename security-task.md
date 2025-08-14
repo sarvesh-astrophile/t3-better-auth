@@ -6,7 +6,7 @@
 
 This document provides a comprehensive analysis of the security posture of the T3 Better Auth application, with specific recommendations for the T3 Stack and Better Auth. Vulnerabilities are identified, categorized, and prioritized to guide remediation efforts.
 
-### Security Progress Bar: ██████░░░░░░░░░░░░░░░░░░░░░░ 20% (4/20)
+### Security Progress Bar: ████████░░░░░░░░░░░░░░░░░░ 30% (6/20)
 - **Critical:** 2 vulnerabilities | **High:** 5 vulnerabilities | **Medium:** 7 vulnerabilities | **Low:** 6 vulnerabilities
 
 ### Security Vulnerability Table
@@ -15,8 +15,8 @@ This document provides a comprehensive analysis of the security posture of the T
 |---|---|---|---|---|---|---|
 | **SEC-001** | Cookie Security | 🔴 Critical | ✅ **Completed** | `src/lib/auth.ts` | Session cookies were missing the `httpOnly` flag, making them accessible to client-side scripts and vulnerable to XSS attacks. | Ensure `httpOnly: true` is set in the Better Auth cookie configuration. This is a default setting, but it's crucial to verify. |
 | **SEC-002** | Cookie Security | 🔴 Critical | ✅ **Completed** | `src/lib/auth.ts` | The `secure` flag was not enforced for cookies in production, allowing them to be sent over non-HTTPS connections. | In `src/lib/auth.ts`, set `secure: process.env.NODE_ENV === "production"` in the cookie options to enforce HTTPS in production. |
-| **SEC-003** | Rate Limiting | 🔴 Critical | ⭕ **Pending** | `src/server/api/routers/auth.ts` | No rate limiting on OTP verification and other sensitive endpoints, leaving them vulnerable to brute-force attacks. | Use a middleware with a library like `upstash/ratelimit` in your tRPC procedures to limit requests to sensitive endpoints. |
-| **SEC-004** | Session Management | 🔴 Critical | ⭕ **Pending** | `src/lib/auth.ts` | The application may be vulnerable to session fixation if the session ID is not regenerated upon successful login. | Better Auth handles session regeneration automatically. However, ensure that any custom session handling logic also follows this practice. |
+| **SEC-003** | Rate Limiting | 🔴 Critical | ✅ **Completed** | `src/lib/auth.ts`, `src/server/api/trpc.ts`, `src/server/api/routers/auth.ts` | No rate limiting on OTP verification and other sensitive endpoints, leaving them vulnerable to brute-force attacks. | Implemented Better Auth built-in rate limiting for sensitive endpoints and added server-side tRPC middleware rate limiting for OTP and 2FA procedures. |
+| **SEC-004** | Session Management | 🔴 Critical | ✅ **Completed** | `src/server/api/routers/auth.ts`, `src/lib/auth.ts` | The application may be vulnerable to session fixation if the session ID is not regenerated upon successful login. | Ensured session ID rotation by revoking any pre-existing session before sign-in/sign-up via server-side `auth.api.signOut` and relying on Better Auth to issue a new session token on success. |
 | **SEC-005** | CSRF Protection | 🔴 Critical | ⭕ **Pending** | All Forms | Forms performing state-changing actions lack CSRF token protection. | While Better Auth provides some protection, it's best practice to implement CSRF tokens. Use a library like `csurf` or implement a double-submit cookie pattern. |
 | **SEC-006** | Information Exposure | 🔴 High | ⭕ **Pending** | `src/lib/email.ts` | OTPs and other sensitive tokens are logged to the console in development. | Remove `console.log` statements that output sensitive information, or use a more robust logging library that can be configured for different environments. |
 | **SEC-007** | Input Validation | 🔴 High | ⭕ **Pending** | `src/app/auth/signup/_components/signup-form.tsx` | Lack of server-side password strength validation. | Use a library like `zod-password` to enforce strong password policies in your Zod schemas within your tRPC routers. |
@@ -42,8 +42,8 @@ This is a prioritized list of actions to address the identified vulnerabilities.
 
 ### Phase 1: Critical Vulnerabilities
 
--   [ ] **(SEC-003)** Implement Rate Limiting on OTP verification.
--   [ ] **(SEC-004)** Implement Session ID regeneration on login to prevent session fixation.
+-   [x] **(SEC-003)** Implement Rate Limiting on OTP verification.
+ -   [x] **(SEC-004)** Implement Session ID regeneration on login to prevent session fixation.
 -   [ ] **(SEC-005)** Add CSRF protection to all state-changing forms.
 -   [ ] **(SEC-008)** Implement Rate Limiting on authentication endpoints.
 -   [ ] **(SEC-019)** Improve backup code handling flow.

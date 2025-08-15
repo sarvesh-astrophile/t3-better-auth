@@ -66,9 +66,5 @@ node_modules/
 # tasks/ 
 
 # sqlite
-*.sqlite
-*.db
-prisma/dev.db
-prisma/migrations/*
 chat.pdf
 chat.md

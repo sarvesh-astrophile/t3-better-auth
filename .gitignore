@@ -68,3 +68,13 @@ node_modules/
 # sqlite
 chat.pdf
 chat.md
+
+# Prisma
+/prisma/.env
+/prisma/.env*.local
+/prisma/*.db
+/prisma/*.db-journal
+/prisma/*.sqlite
+/prisma/*.sqlite-journal
+/prisma/*-shm
+/prisma/*-wal

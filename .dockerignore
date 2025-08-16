@@ -1,0 +1,26 @@
+# Node/Bun dependencies
+node_modules
+.pnp
+.pnp.*
+
+# Build output
+.next
+out
+dist
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Misc
+.DS_Store
+.env
+.env.*
+!.env.example
+.vercel
+.turbo
+*.tsbuildinfo
+
+
